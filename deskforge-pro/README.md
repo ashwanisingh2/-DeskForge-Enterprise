@@ -1,6 +1,6 @@
 # DeskForge Pro
 
-Production-oriented Next.js 14 IT helpdesk with PostgreSQL, Prisma, NextAuth credentials, Resend hooks, role-aware APIs, SLA tracking, analytics, and responsive Tailwind UI.
+Production-oriented Next.js 16 IT helpdesk with React 19, PostgreSQL, Prisma, credential authentication, Resend hooks, tenant-scoped APIs, SLA automation, analytics, and responsive Tailwind UI.
 
 The Enterprise 2.0 architecture and security delivery gates are documented in [`docs/ENTERPRISE-2.0-ROADMAP.md`](docs/ENTERPRISE-2.0-ROADMAP.md) and [`docs/SECURITY.md`](docs/SECURITY.md).
 

@@ -18,9 +18,12 @@ Do not open public issues for vulnerabilities. Send a private report to the conf
 - Health responses expose status only and no credentials.
 - Production secrets belong in the deployment secret manager, never source control.
 
+## Dependency posture
+
+The application is on Next.js 16, React 19 and Vitest 4. The lockfile uses patched PostCSS and UUID overrides. `npm audit` reports zero known vulnerabilities at the recorded lockfile revision.
+
 ## Required before production
 
-- Upgrade framework/auth dependencies to currently supported security releases.
 - Add Redis-backed rate limiting and refresh-token rotation.
 - Add tenant-scoped query enforcement and PostgreSQL RLS.
 - Add CSRF tokens, HTML sanitization and attachment malware scanning.
