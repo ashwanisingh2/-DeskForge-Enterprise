@@ -1,0 +1,1 @@
+import {getServerSession} from 'next-auth';import {authOptions} from './auth';export async function requireUser(){let s=await getServerSession(authOptions);if(!s?.user)throw new Error('UNAUTHORIZED');return s.user as typeof s.user&{id:string;role:'ADMIN'|'AGENT'|'END_USER'}}
