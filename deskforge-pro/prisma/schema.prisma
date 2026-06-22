@@ -127,14 +127,16 @@ model ActivityLog {
 }
 
 model Attachment {
-  id         String   @id @default(cuid())
-  filename   String
-  url        String
-  size       Int
-  ticketId   String
-  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  uploadedBy String
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  filename    String
+  url         String
+  objectKey   String   @unique
+  contentType String
+  size        Int
+  ticketId    String
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedBy  String
+  createdAt   DateTime @default(now())
 }
 
 model KBArticle {

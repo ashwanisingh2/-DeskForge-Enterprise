@@ -103,6 +103,8 @@ CREATE TABLE "Attachment" (
     "id" TEXT NOT NULL,
     "filename" TEXT NOT NULL,
     "url" TEXT NOT NULL,
+    "objectKey" TEXT NOT NULL,
+    "contentType" TEXT NOT NULL,
     "size" INTEGER NOT NULL,
     "ticketId" TEXT NOT NULL,
     "uploadedBy" TEXT NOT NULL,
@@ -356,6 +358,9 @@ CREATE INDEX "Ticket_tenantId_requesterId_createdAt_idx" ON "Ticket"("tenantId",
 
 -- CreateIndex
 CREATE INDEX "Ticket_tenantId_dueDate_slaStatus_idx" ON "Ticket"("tenantId", "dueDate", "slaStatus");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Attachment_objectKey_key" ON "Attachment"("objectKey");
 
 -- CreateIndex
 CREATE INDEX "KBArticle_tenantId_status_category_idx" ON "KBArticle"("tenantId", "status", "category");
