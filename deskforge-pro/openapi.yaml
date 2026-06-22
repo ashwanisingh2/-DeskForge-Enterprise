@@ -1,0 +1,69 @@
+openapi: 3.1.0
+info:
+  title: DeskForge Enterprise API
+  version: 2.0.0
+servers:
+  - url: /api
+security:
+  - sessionCookie: []
+paths:
+  /health:
+    get:
+      security: []
+      summary: Dependency health
+      responses:
+        '200': {description: Healthy}
+        '503': {description: Degraded}
+  /tickets:
+    get:
+      summary: List tenant-scoped tickets
+      parameters:
+        - {in: query, name: page, schema: {type: integer, minimum: 1}}
+        - {in: query, name: limit, schema: {type: integer, minimum: 1, maximum: 100}}
+        - {in: query, name: status, schema: {type: string}}
+        - {in: query, name: search, schema: {type: string}}
+      responses:
+        '200': {description: Paginated result}
+        '401': {description: Unauthenticated}
+    post:
+      summary: Create a ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TicketInput'}
+      responses:
+        '201': {description: Created}
+        '400': {description: Validation error}
+  /tickets/{id}:
+    parameters:
+      - {in: path, name: id, required: true, schema: {type: string}}
+    get:
+      summary: Get tenant-scoped ticket details
+      responses: {'200': {description: Ticket}, '404': {description: Not found}}
+    patch:
+      summary: Apply a validated lifecycle/property update
+      responses: {'200': {description: Updated}, '409': {description: Invalid transition}}
+    delete:
+      summary: Soft-delete a ticket
+      responses: {'200': {description: Deleted}, '403': {description: Forbidden}}
+  /tickets/{id}/comments:
+    post:
+      summary: Add a public reply or internal note
+      parameters:
+        - {in: path, name: id, required: true, schema: {type: string}}
+      responses: {'201': {description: Created}}
+components:
+  securitySchemes:
+    sessionCookie: {type: apiKey, in: cookie, name: next-auth.session-token}
+  schemas:
+    TicketInput:
+      type: object
+      required: [title, description, priority, category]
+      properties:
+        title: {type: string, minLength: 4, maxLength: 150}
+        description: {type: string, minLength: 10}
+        priority: {enum: [LOW, MEDIUM, HIGH, CRITICAL]}
+        category: {type: string}
+        subcategory: {type: string}
+        tags: {type: array, items: {type: string}}

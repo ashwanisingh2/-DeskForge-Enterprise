@@ -194,6 +194,130 @@ CREATE TABLE "RelatedTicket" (
     CONSTRAINT "RelatedTicket_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "Asset" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "assetTag" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "serialNumber" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'OPERATIONAL',
+    "ownerId" TEXT,
+    "purchaseDate" TIMESTAMP(3),
+    "warrantyEnd" TIMESTAMP(3),
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Asset_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CIRelationship" (
+    "id" TEXT NOT NULL,
+    "sourceId" TEXT NOT NULL,
+    "targetId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+
+    CONSTRAINT "CIRelationship_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ChangeRequest" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'DRAFT',
+    "risk" TEXT NOT NULL,
+    "implementationPlan" TEXT NOT NULL,
+    "rollbackPlan" TEXT NOT NULL,
+    "windowStart" TIMESTAMP(3),
+    "windowEnd" TIMESTAMP(3),
+    "requesterId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ChangeRequest_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Approval" (
+    "id" TEXT NOT NULL,
+    "changeId" TEXT NOT NULL,
+    "approverId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "comment" TEXT,
+    "decidedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Approval_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Problem" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'INVESTIGATING',
+    "rootCause" TEXT,
+    "workaround" TEXT,
+    "permanentFix" TEXT,
+    "ownerId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Problem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProblemIncident" (
+    "problemId" TEXT NOT NULL,
+    "ticketId" TEXT NOT NULL,
+
+    CONSTRAINT "ProblemIncident_pkey" PRIMARY KEY ("problemId","ticketId")
+);
+
+-- CreateTable
+CREATE TABLE "ServiceCatalogItem" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "category" TEXT NOT NULL,
+    "formSchema" JSONB NOT NULL,
+    "approvalSchema" JSONB,
+    "fulfillmentTeam" TEXT,
+    "deliveryHours" INTEGER,
+    "cost" DECIMAL(12,2),
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ServiceCatalogItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TimeEntry" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "ticketId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "workDate" TIMESTAMP(3) NOT NULL,
+    "durationMinutes" INTEGER NOT NULL,
+    "description" TEXT NOT NULL,
+    "workType" TEXT NOT NULL,
+    "billable" BOOLEAN NOT NULL DEFAULT false,
+    "hourlyRate" DECIMAL(12,2),
+    "approvedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "TimeEntry_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "Tenant_slug_key" ON "Tenant"("slug");
 
@@ -235,6 +359,30 @@ CREATE INDEX "CannedResponse_tenantId_category_idx" ON "CannedResponse"("tenantI
 
 -- CreateIndex
 CREATE UNIQUE INDEX "RelatedTicket_ticketAId_ticketBId_key" ON "RelatedTicket"("ticketAId", "ticketBId");
+
+-- CreateIndex
+CREATE INDEX "Asset_tenantId_type_status_idx" ON "Asset"("tenantId", "type", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Asset_tenantId_assetTag_key" ON "Asset"("tenantId", "assetTag");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CIRelationship_sourceId_targetId_type_key" ON "CIRelationship"("sourceId", "targetId", "type");
+
+-- CreateIndex
+CREATE INDEX "ChangeRequest_tenantId_status_windowStart_idx" ON "ChangeRequest"("tenantId", "status", "windowStart");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Approval_changeId_approverId_key" ON "Approval"("changeId", "approverId");
+
+-- CreateIndex
+CREATE INDEX "Problem_tenantId_status_idx" ON "Problem"("tenantId", "status");
+
+-- CreateIndex
+CREATE INDEX "ServiceCatalogItem_tenantId_category_isActive_idx" ON "ServiceCatalogItem"("tenantId", "category", "isActive");
+
+-- CreateIndex
+CREATE INDEX "TimeEntry_tenantId_userId_workDate_idx" ON "TimeEntry"("tenantId", "userId", "workDate");
 
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -289,4 +437,49 @@ ALTER TABLE "RelatedTicket" ADD CONSTRAINT "RelatedTicket_ticketAId_fkey" FOREIG
 
 -- AddForeignKey
 ALTER TABLE "RelatedTicket" ADD CONSTRAINT "RelatedTicket_ticketBId_fkey" FOREIGN KEY ("ticketBId") REFERENCES "Ticket"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Asset" ADD CONSTRAINT "Asset_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Asset" ADD CONSTRAINT "Asset_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CIRelationship" ADD CONSTRAINT "CIRelationship_sourceId_fkey" FOREIGN KEY ("sourceId") REFERENCES "Asset"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CIRelationship" ADD CONSTRAINT "CIRelationship_targetId_fkey" FOREIGN KEY ("targetId") REFERENCES "Asset"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ChangeRequest" ADD CONSTRAINT "ChangeRequest_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ChangeRequest" ADD CONSTRAINT "ChangeRequest_requesterId_fkey" FOREIGN KEY ("requesterId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Approval" ADD CONSTRAINT "Approval_changeId_fkey" FOREIGN KEY ("changeId") REFERENCES "ChangeRequest"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Problem" ADD CONSTRAINT "Problem_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Problem" ADD CONSTRAINT "Problem_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProblemIncident" ADD CONSTRAINT "ProblemIncident_problemId_fkey" FOREIGN KEY ("problemId") REFERENCES "Problem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProblemIncident" ADD CONSTRAINT "ProblemIncident_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "Ticket"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ServiceCatalogItem" ADD CONSTRAINT "ServiceCatalogItem_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TimeEntry" ADD CONSTRAINT "TimeEntry_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TimeEntry" ADD CONSTRAINT "TimeEntry_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "Ticket"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TimeEntry" ADD CONSTRAINT "TimeEntry_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 

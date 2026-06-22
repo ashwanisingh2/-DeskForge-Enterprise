@@ -14,10 +14,17 @@ The browser-only HTML application remains a product demo. `deskforge-pro` is the
 - Railway and standalone Docker deployment configuration.
 - CI pipeline that installs, generates Prisma, provisions the schema and builds.
 - Twenty-five realistic tickets, users, SLA policies, KB content and canned responses.
+- Tenant records and mandatory tenant ownership across users, tickets, knowledge, notifications, audits, SLA policies and canned responses.
+- Tenant-scoped API/page queries sourced from signed session claims.
+- Permission-checked ticket mutations and validated lifecycle transitions.
+- Five-minute SLA warning/breach processing, notifications and 72-hour auto-close endpoint.
+- CMDB assets/relationships, CAB changes/approvals, problems/incidents, catalog schemas and billable time-entry models.
+- Prometheus metrics endpoint, OpenAPI contract and operations runbook.
+- Executable unit tests for RBAC, lifecycle and SLA behavior.
 
 ## Phase 1 — secure multi-tenant foundation
 
-1. Add `Tenant` and `Membership` models. Every tenant-owned table receives a mandatory `tenantId` and compound indexes.
+1. Extend direct tenant ownership into membership-based cross-tenant administration and PostgreSQL RLS policies.
 2. Resolve tenant from a verified session claim, never from an untrusted request header. Add PostgreSQL RLS policies as defense in depth.
 3. Replace the credentials-only session with 15-minute access tokens and rotating, hashed refresh-token records in secure HTTP-only cookies.
 4. Add Redis-backed login rate limiting, session revocation, concurrent-session limits and login history.

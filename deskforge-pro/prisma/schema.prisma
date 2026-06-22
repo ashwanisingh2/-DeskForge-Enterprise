@@ -8,14 +8,14 @@ datasource db {
 }
 
 model Tenant {
-  id              String           @id @default(cuid())
-  slug            String           @unique
+  id              String               @id @default(cuid())
+  slug            String               @unique
   name            String
-  mode            String           @default("single")
-  timezone        String           @default("UTC")
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  mode            String               @default("single")
+  timezone        String               @default("UTC")
+  isActive        Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
   users           User[]
   tickets         Ticket[]
   kbArticles      KBArticle[]
@@ -23,64 +23,75 @@ model Tenant {
   auditLogs       AuditLog[]
   slaConfigs      SLAConfig[]
   cannedResponses CannedResponse[]
+  assets          Asset[]
+  changes         ChangeRequest[]
+  problems        Problem[]
+  catalogItems    ServiceCatalogItem[]
+  timeEntries     TimeEntry[]
 }
 
 model User {
-  id               String         @id @default(cuid())
+  id               String          @id @default(cuid())
   name             String
-  email            String         @unique
-  username         String         @unique
+  email            String          @unique
+  username         String          @unique
   password         String
-  role             Role           @default(END_USER)
+  role             Role            @default(END_USER)
   department       String?
   phone            String?
-  isActive         Boolean        @default(true)
+  isActive         Boolean         @default(true)
   avatar           String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   tenantId         String
-  tenant           Tenant         @relation(fields: [tenantId], references: [id])
-  assignedTickets  Ticket[]       @relation("AssignedTo")
-  requestedTickets Ticket[]       @relation("RequestedBy")
+  tenant           Tenant          @relation(fields: [tenantId], references: [id])
+  assignedTickets  Ticket[]        @relation("AssignedTo")
+  requestedTickets Ticket[]        @relation("RequestedBy")
   comments         Comment[]
   notifications    Notification[]
   auditLogs        AuditLog[]
   activityLogs     ActivityLog[]
+  ownedAssets      Asset[]         @relation("AssetOwner")
+  timeEntries      TimeEntry[]
+  requestedChanges ChangeRequest[] @relation("ChangeRequester")
+  ownedProblems    Problem[]       @relation("ProblemOwner")
 
   @@index([tenantId, role, isActive])
 }
 
 model Ticket {
-  id              String          @id
+  id              String            @id
   title           String
-  description     String          @db.Text
-  status          TicketStatus    @default(OPEN)
-  priority        Priority        @default(MEDIUM)
+  description     String            @db.Text
+  status          TicketStatus      @default(OPEN)
+  priority        Priority          @default(MEDIUM)
   category        String
   subcategory     String?
   impact          String?
   urgency         String?
   source          String?
-  tags            String[]        @default([])
+  tags            String[]          @default([])
   assigneeId      String?
-  assignee        User?           @relation("AssignedTo", fields: [assigneeId], references: [id])
+  assignee        User?             @relation("AssignedTo", fields: [assigneeId], references: [id])
   requesterId     String
-  requester       User            @relation("RequestedBy", fields: [requesterId], references: [id])
+  requester       User              @relation("RequestedBy", fields: [requesterId], references: [id])
   dueDate         DateTime?
   resolvedAt      DateTime?
   closedAt        DateTime?
   firstResponseAt DateTime?
-  slaStatus       SLAStatus       @default(ON_TRACK)
+  slaStatus       SLAStatus         @default(ON_TRACK)
   deletedAt       DateTime?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   tenantId        String
-  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
   comments        Comment[]
   attachments     Attachment[]
   activityLogs    ActivityLog[]
-  relatedTo       RelatedTicket[] @relation("TicketA")
-  relatedFrom     RelatedTicket[] @relation("TicketB")
+  relatedTo       RelatedTicket[]   @relation("TicketA")
+  relatedFrom     RelatedTicket[]   @relation("TicketB")
+  timeEntries     TimeEntry[]
+  problemLinks    ProblemIncident[]
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, assigneeId, status])
@@ -208,6 +219,142 @@ model RelatedTicket {
   ticketB      Ticket @relation("TicketB", fields: [ticketBId], references: [id])
 
   @@unique([ticketAId, ticketBId])
+}
+
+model Asset {
+  id            String           @id @default(cuid())
+  tenantId      String
+  tenant        Tenant           @relation(fields: [tenantId], references: [id])
+  assetTag      String
+  name          String
+  type          String
+  serialNumber  String?
+  status        String           @default("OPERATIONAL")
+  ownerId       String?
+  owner         User?            @relation("AssetOwner", fields: [ownerId], references: [id])
+  purchaseDate  DateTime?
+  warrantyEnd   DateTime?
+  metadata      Json?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  relationships CIRelationship[] @relation("CISource")
+  relatedFrom   CIRelationship[] @relation("CITarget")
+
+  @@unique([tenantId, assetTag])
+  @@index([tenantId, type, status])
+}
+
+model CIRelationship {
+  id       String @id @default(cuid())
+  sourceId String
+  targetId String
+  type     String
+  source   Asset  @relation("CISource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target   Asset  @relation("CITarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, targetId, type])
+}
+
+model ChangeRequest {
+  id                 String     @id
+  tenantId           String
+  tenant             Tenant     @relation(fields: [tenantId], references: [id])
+  title              String
+  description        String     @db.Text
+  type               String
+  status             String     @default("DRAFT")
+  risk               String
+  implementationPlan String     @db.Text
+  rollbackPlan       String     @db.Text
+  windowStart        DateTime?
+  windowEnd          DateTime?
+  requesterId        String
+  requester          User       @relation("ChangeRequester", fields: [requesterId], references: [id])
+  approvals          Approval[]
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@index([tenantId, status, windowStart])
+}
+
+model Approval {
+  id         String        @id @default(cuid())
+  changeId   String
+  change     ChangeRequest @relation(fields: [changeId], references: [id], onDelete: Cascade)
+  approverId String
+  status     String        @default("PENDING")
+  comment    String?
+  decidedAt  DateTime?
+  createdAt  DateTime      @default(now())
+
+  @@unique([changeId, approverId])
+}
+
+model Problem {
+  id           String            @id
+  tenantId     String
+  tenant       Tenant            @relation(fields: [tenantId], references: [id])
+  title        String
+  description  String            @db.Text
+  status       String            @default("INVESTIGATING")
+  rootCause    String?           @db.Text
+  workaround   String?           @db.Text
+  permanentFix String?           @db.Text
+  ownerId      String
+  owner        User              @relation("ProblemOwner", fields: [ownerId], references: [id])
+  incidents    ProblemIncident[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([tenantId, status])
+}
+
+model ProblemIncident {
+  problemId String
+  ticketId  String
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  ticket    Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@id([problemId, ticketId])
+}
+
+model ServiceCatalogItem {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  name            String
+  description     String   @db.Text
+  category        String
+  formSchema      Json
+  approvalSchema  Json?
+  fulfillmentTeam String?
+  deliveryHours   Int?
+  cost            Decimal? @db.Decimal(12, 2)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId, category, isActive])
+}
+
+model TimeEntry {
+  id              String    @id @default(cuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  ticketId        String
+  ticket          Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  workDate        DateTime
+  durationMinutes Int
+  description     String
+  workType        String
+  billable        Boolean   @default(false)
+  hourlyRate      Decimal?  @db.Decimal(12, 2)
+  approvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([tenantId, userId, workDate])
 }
 
 enum Role {
