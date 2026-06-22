@@ -1,0 +1,4 @@
+import type {TicketStatus} from '@prisma/client';
+const transitions:Record<TicketStatus,TicketStatus[]>={OPEN:['ASSIGNED','PENDING','CLOSED'],ASSIGNED:['IN_PROGRESS','PENDING','RESOLVED','CLOSED'],IN_PROGRESS:['PENDING','RESOLVED','ASSIGNED'],PENDING:['ASSIGNED','IN_PROGRESS','RESOLVED','CLOSED'],RESOLVED:['CLOSED','IN_PROGRESS'],CLOSED:['IN_PROGRESS']};
+export function assertTransition(from:TicketStatus,to:TicketStatus){if(from===to)return;if(!transitions[from].includes(to))throw new Error(`INVALID_TRANSITION:${from}:${to}`)}
+export function lifecycleDates(status:TicketStatus){return{...(status==='RESOLVED'?{resolvedAt:new Date(),closedAt:null}:{}),...(status==='CLOSED'?{closedAt:new Date()}:{}),...(['OPEN','ASSIGNED','IN_PROGRESS','PENDING'].includes(status)?{resolvedAt:null,closedAt:null}:{})}}

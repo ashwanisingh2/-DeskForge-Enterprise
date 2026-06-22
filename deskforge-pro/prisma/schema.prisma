@@ -1,157 +1,221 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Tenant {
+  id              String           @id @default(cuid())
+  slug            String           @unique
+  name            String
+  mode            String           @default("single")
+  timezone        String           @default("UTC")
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  users           User[]
+  tickets         Ticket[]
+  kbArticles      KBArticle[]
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+  slaConfigs      SLAConfig[]
+  cannedResponses CannedResponse[]
+}
+
 model User {
-  id String @id @default(cuid())
-  name String
-  email String @unique
-  username String @unique
-  password String
-  role Role @default(END_USER)
-  department String?
-  phone String?
-  isActive Boolean @default(true)
-  avatar String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  assignedTickets Ticket[] @relation("AssignedTo")
-  requestedTickets Ticket[] @relation("RequestedBy")
-  comments Comment[]
-  notifications Notification[]
-  auditLogs AuditLog[]
-  activityLogs ActivityLog[]
+  id               String         @id @default(cuid())
+  name             String
+  email            String         @unique
+  username         String         @unique
+  password         String
+  role             Role           @default(END_USER)
+  department       String?
+  phone            String?
+  isActive         Boolean        @default(true)
+  avatar           String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  tenantId         String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id])
+  assignedTickets  Ticket[]       @relation("AssignedTo")
+  requestedTickets Ticket[]       @relation("RequestedBy")
+  comments         Comment[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  activityLogs     ActivityLog[]
+
+  @@index([tenantId, role, isActive])
 }
+
 model Ticket {
-  id String @id
-  title String
-  description String @db.Text
-  status TicketStatus @default(OPEN)
-  priority Priority @default(MEDIUM)
-  category String
-  subcategory String?
-  impact String?
-  urgency String?
-  source String?
-  tags String[] @default([])
-  assigneeId String?
-  assignee User? @relation("AssignedTo",fields:[assigneeId],references:[id])
-  requesterId String
-  requester User @relation("RequestedBy",fields:[requesterId],references:[id])
-  dueDate DateTime?
-  resolvedAt DateTime?
-  closedAt DateTime?
+  id              String          @id
+  title           String
+  description     String          @db.Text
+  status          TicketStatus    @default(OPEN)
+  priority        Priority        @default(MEDIUM)
+  category        String
+  subcategory     String?
+  impact          String?
+  urgency         String?
+  source          String?
+  tags            String[]        @default([])
+  assigneeId      String?
+  assignee        User?           @relation("AssignedTo", fields: [assigneeId], references: [id])
+  requesterId     String
+  requester       User            @relation("RequestedBy", fields: [requesterId], references: [id])
+  dueDate         DateTime?
+  resolvedAt      DateTime?
+  closedAt        DateTime?
   firstResponseAt DateTime?
-  slaStatus SLAStatus @default(ON_TRACK)
-  deletedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  comments Comment[]
-  attachments Attachment[]
-  activityLogs ActivityLog[]
-  relatedTo RelatedTicket[] @relation("TicketA")
-  relatedFrom RelatedTicket[] @relation("TicketB")
+  slaStatus       SLAStatus       @default(ON_TRACK)
+  deletedAt       DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  tenantId        String
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  comments        Comment[]
+  attachments     Attachment[]
+  activityLogs    ActivityLog[]
+  relatedTo       RelatedTicket[] @relation("TicketA")
+  relatedFrom     RelatedTicket[] @relation("TicketB")
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, assigneeId, status])
+  @@index([tenantId, requesterId, createdAt])
+  @@index([tenantId, dueDate, slaStatus])
 }
+
 model Comment {
-  id String @id @default(cuid())
-  content String @db.Text
-  isInternal Boolean @default(false)
-  ticketId String
-  ticket Ticket @relation(fields:[ticketId],references:[id],onDelete:Cascade)
-  authorId String
-  author User @relation(fields:[authorId],references:[id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  content    String   @db.Text
+  isInternal Boolean  @default(false)
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
+
 model ActivityLog {
-  id String @id @default(cuid())
-  ticketId String
-  ticket Ticket @relation(fields:[ticketId],references:[id],onDelete:Cascade)
-  action String
-  detail String?
-  oldValue String?
-  newValue String?
-  userId String
-  user User @relation(fields:[userId],references:[id])
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  action    String
+  detail    String?
+  oldValue  String?
+  newValue  String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
 }
+
 model Attachment {
-  id String @id @default(cuid())
-  filename String
-  url String
-  size Int
-  ticketId String
-  ticket Ticket @relation(fields:[ticketId],references:[id],onDelete:Cascade)
+  id         String   @id @default(cuid())
+  filename   String
+  url        String
+  size       Int
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   uploadedBy String
-  createdAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 }
+
 model KBArticle {
-  id String @id @default(cuid())
-  title String
-  content String @db.Text
-  category String
-  status String @default("published")
-  views Int @default(0)
-  helpfulYes Int @default(0)
-  helpfulNo Int @default(0)
-  authorId String
-  tags String[] @default([])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  title      String
+  content    String   @db.Text
+  category   String
+  status     String   @default("published")
+  views      Int      @default(0)
+  helpfulYes Int      @default(0)
+  helpfulNo  Int      @default(0)
+  authorId   String
+  tags       String[] @default([])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status, category])
 }
+
 model Notification {
-  id String @id @default(cuid())
-  userId String
-  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
-  type String
-  title String
-  message String
-  ticketId String?
-  isRead Boolean @default(false)
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  ticketId  String?
+  isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, userId, isRead, createdAt])
 }
+
 model AuditLog {
-  id String @id @default(cuid())
-  userId String
-  user User @relation(fields:[userId],references:[id])
-  action String
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
   entityType String
-  entityId String
-  oldValue Json?
-  newValue Json?
-  ipAddress String?
-  createdAt DateTime @default(now())
+  entityId   String
+  oldValue   Json?
+  newValue   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, entityType, entityId, createdAt])
 }
+
 model SLAConfig {
-  id String @id @default(cuid())
-  priority String @unique
-  responseTimeHrs Int
+  id                String @id @default(cuid())
+  priority          String
+  responseTimeHrs   Int
   resolutionTimeHrs Int
+  tenantId          String
+  tenant            Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, priority])
 }
+
 model CannedResponse {
-  id String @id @default(cuid())
-  title String
-  content String @db.Text
-  category String?
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  category  String?
   createdAt DateTime @default(now())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, category])
 }
+
 model RelatedTicket {
-  id String @id @default(cuid())
-  ticketAId String
-  ticketBId String
+  id           String @id @default(cuid())
+  ticketAId    String
+  ticketBId    String
   relationship String
-  ticketA Ticket @relation("TicketA",fields:[ticketAId],references:[id])
-  ticketB Ticket @relation("TicketB",fields:[ticketBId],references:[id])
-  @@unique([ticketAId,ticketBId])
+  ticketA      Ticket @relation("TicketA", fields: [ticketAId], references: [id])
+  ticketB      Ticket @relation("TicketB", fields: [ticketBId], references: [id])
+
+  @@unique([ticketAId, ticketBId])
 }
+
 enum Role {
   ADMIN
   AGENT
   END_USER
 }
+
 enum TicketStatus {
   OPEN
   ASSIGNED
@@ -160,12 +224,14 @@ enum TicketStatus {
   RESOLVED
   CLOSED
 }
+
 enum Priority {
   LOW
   MEDIUM
   HIGH
   CRITICAL
 }
+
 enum SLAStatus {
   ON_TRACK
   AT_RISK
