@@ -10,6 +10,10 @@
 
 Invoke `POST /api/cron/sla` every five minutes with `Authorization: Bearer $CRON_SECRET`. The job updates warning/breach state, appends audit entries, creates notifications, and closes tickets 72 hours after resolution. The operation is idempotent for unchanged records.
 
+## Authentication operations
+
+Redis stores login throttling counters using a 15-minute TTL. Five attempts are allowed for each IP/username pair. Successful authentication clears the counter; all outcomes append a login-history record. Alert on sustained rate-limit events or distributed attempts against one account.
+
 ## Backup and restore
 
 1. Run encrypted `pg_dump --format=custom` daily to restricted object storage.

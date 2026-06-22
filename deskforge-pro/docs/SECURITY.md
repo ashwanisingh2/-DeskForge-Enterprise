@@ -8,6 +8,9 @@ Do not open public issues for vulnerabilities. Send a private report to the conf
 
 - Passwords are bcrypt hashes; password fields are never returned by ticket APIs.
 - Protected pages and APIs require an authenticated session.
+- Login attempts are rate-limited by IP and normalized username through Redis, with a bounded in-process development fallback.
+- Successful and failed authentication attempts are stored in append-only login history with IP and user agent.
+- Sessions carry a signed tenant claim and expire after 30 minutes.
 - Authorization is expressed as named permissions in `lib/rbac.ts`.
 - Prisma parameterizes database access.
 - CSP, frame protection, MIME protection, referrer and permissions headers are configured globally.

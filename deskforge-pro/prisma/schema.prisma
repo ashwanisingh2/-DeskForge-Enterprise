@@ -28,6 +28,7 @@ model Tenant {
   problems        Problem[]
   catalogItems    ServiceCatalogItem[]
   timeEntries     TimeEntry[]
+  loginEvents     LoginEvent[]
 }
 
 model User {
@@ -55,6 +56,7 @@ model User {
   timeEntries      TimeEntry[]
   requestedChanges ChangeRequest[] @relation("ChangeRequester")
   ownedProblems    Problem[]       @relation("ProblemOwner")
+  loginEvents      LoginEvent[]
 
   @@index([tenantId, role, isActive])
 }
@@ -355,6 +357,23 @@ model TimeEntry {
   createdAt       DateTime  @default(now())
 
   @@index([tenantId, userId, workDate])
+}
+
+model LoginEvent {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  username  String
+  success   Boolean
+  reason    String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([username, createdAt])
+  @@index([tenantId, userId, createdAt])
 }
 
 enum Role {

@@ -318,6 +318,21 @@ CREATE TABLE "TimeEntry" (
     CONSTRAINT "TimeEntry_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "LoginEvent" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT,
+    "userId" TEXT,
+    "username" TEXT NOT NULL,
+    "success" BOOLEAN NOT NULL,
+    "reason" TEXT,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "LoginEvent_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "Tenant_slug_key" ON "Tenant"("slug");
 
@@ -383,6 +398,12 @@ CREATE INDEX "ServiceCatalogItem_tenantId_category_isActive_idx" ON "ServiceCata
 
 -- CreateIndex
 CREATE INDEX "TimeEntry_tenantId_userId_workDate_idx" ON "TimeEntry"("tenantId", "userId", "workDate");
+
+-- CreateIndex
+CREATE INDEX "LoginEvent_username_createdAt_idx" ON "LoginEvent"("username", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "LoginEvent_tenantId_userId_createdAt_idx" ON "LoginEvent"("tenantId", "userId", "createdAt");
 
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -482,4 +503,10 @@ ALTER TABLE "TimeEntry" ADD CONSTRAINT "TimeEntry_ticketId_fkey" FOREIGN KEY ("t
 
 -- AddForeignKey
 ALTER TABLE "TimeEntry" ADD CONSTRAINT "TimeEntry_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "LoginEvent" ADD CONSTRAINT "LoginEvent_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "LoginEvent" ADD CONSTRAINT "LoginEvent_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
