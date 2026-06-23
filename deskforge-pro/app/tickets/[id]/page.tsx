@@ -1,1 +1,14 @@
-import {notFound} from 'next/navigation';import {prisma} from '@/lib/prisma';import {Shell} from '@/components/Shell';import {TicketDetail} from '@/components/TicketDetail';import {requireUser} from '@/lib/session';export default async function Page({params}:{params:Promise<{id:string}>}){let {id}=await params;let user=await requireUser(),t=await prisma.ticket.findFirst({where:{id:id,tenantId:user.tenantId,deletedAt:null,...(user.role==='END_USER'?{requesterId:user.id}:{})},include:{requester:true,assignee:true,comments:{include:{author:true},orderBy:{createdAt:'asc'}},activityLogs:{include:{user:true}}}});if(!t)notFound();return <Shell><TicketDetail initial={t}/></Shell>}
+import {notFound} from 'next/navigation';
+import {prisma} from '@/lib/prisma';
+import {Shell} from '@/components/Shell';
+import {TicketDetail} from '@/components/TicketDetail';
+import {requireUser} from '@/lib/session';
+import {demoTickets,isLocalDemo} from '@/lib/demo-data';
+
+export default async function Page({params}:{params:Promise<{id:string}>}){
+  let {id}=await params,user=await requireUser();
+  if(isLocalDemo()){let t=demoTickets.find(x=>x.id===id);if(!t)notFound();return <Shell><TicketDetail initial={t}/></Shell>}
+  let t=await prisma.ticket.findFirst({where:{id:id,tenantId:user.tenantId,deletedAt:null,...(user.role==='END_USER'?{requesterId:user.id}:{})},include:{requester:true,assignee:true,comments:{include:{author:true},orderBy:{createdAt:'asc'}},activityLogs:{include:{user:true}}}});
+  if(!t)notFound();
+  return <Shell><TicketDetail initial={t}/></Shell>;
+}
