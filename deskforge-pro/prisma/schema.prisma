@@ -29,6 +29,9 @@ model Tenant {
   catalogItems    ServiceCatalogItem[]
   timeEntries     TimeEntry[]
   loginEvents     LoginEvent[]
+  refreshTokens   RefreshToken[]
+  businessHours   BusinessHour[]
+  holidays        Holiday[]
 }
 
 model User {
@@ -57,6 +60,7 @@ model User {
   requestedChanges ChangeRequest[] @relation("ChangeRequester")
   ownedProblems    Problem[]       @relation("ProblemOwner")
   loginEvents      LoginEvent[]
+  refreshTokens    RefreshToken[]
 
   @@index([tenantId, role, isActive])
 }
@@ -94,6 +98,7 @@ model Ticket {
   relatedFrom     RelatedTicket[]   @relation("TicketB")
   timeEntries     TimeEntry[]
   problemLinks    ProblemIncident[]
+  slaHistory      SLAClockHistory[]
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, assigneeId, status])
@@ -272,6 +277,10 @@ model ChangeRequest {
   rollbackPlan       String     @db.Text
   windowStart        DateTime?
   windowEnd          DateTime?
+  pirSuccess         Boolean?
+  actualDuration     Int?
+  pirIssues          String?    @db.Text
+  lessonsLearned     String?    @db.Text
   requesterId        String
   requester          User       @relation("ChangeRequester", fields: [requesterId], references: [id])
   approvals          Approval[]
@@ -286,6 +295,7 @@ model Approval {
   changeId   String
   change     ChangeRequest @relation(fields: [changeId], references: [id], onDelete: Cascade)
   approverId String
+  approverRole String      @default("TECH_APPROVER")
   status     String        @default("PENDING")
   comment    String?
   decidedAt  DateTime?
@@ -302,7 +312,12 @@ model Problem {
   description  String            @db.Text
   status       String            @default("INVESTIGATING")
   rootCause    String?           @db.Text
+  symptoms     String?           @db.Text
+  contributingFactors Json?
   workaround   String?           @db.Text
+  fiveWhys     Json?
+  isKnownError Boolean           @default(false)
+  kbArticleId  String?
   permanentFix String?           @db.Text
   ownerId      String
   owner        User              @relation("ProblemOwner", fields: [ownerId], references: [id])
@@ -378,6 +393,55 @@ model LoginEvent {
   @@index([tenantId, userId, createdAt])
 }
 
+model RefreshToken {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  deviceInfo String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId, revokedAt, createdAt])
+  @@index([tenantId, expiresAt])
+}
+
+model BusinessHour {
+  id        String @id @default(cuid())
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  dayOfWeek Int
+  startHour Int
+  endHour   Int
+
+  @@unique([tenantId, dayOfWeek])
+}
+
+model Holiday {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  date        DateTime
+  description String
+
+  @@unique([tenantId, date])
+}
+
+model SLAClockHistory {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  event     String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
 enum Role {
   ADMIN
   AGENT
@@ -389,6 +453,8 @@ enum TicketStatus {
   ASSIGNED
   IN_PROGRESS
   PENDING
+  PENDING_CUSTOMER
+  ON_HOLD
   RESOLVED
   CLOSED
 }
@@ -403,5 +469,7 @@ enum Priority {
 enum SLAStatus {
   ON_TRACK
   AT_RISK
+  WARNING
+  CRITICAL
   BREACHED
 }
