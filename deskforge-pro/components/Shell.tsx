@@ -14,6 +14,7 @@ import {
   LogOut,
   Plus,
   ScrollText,
+  Search,
   ShieldAlert,
   Ticket,
   TrendingUp,
@@ -22,6 +23,7 @@ import {
 import {cn} from '@/lib/utils';
 import {Button} from '@/components/ui/button';
 import {ThemeToggle} from '@/components/ui/theme-toggle';
+import {CommandPalette} from '@/components/CommandPalette';
 
 type NavItem = {label: string; href: string; icon: typeof Ticket; adminOnly?: boolean};
 
