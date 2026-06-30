@@ -5,7 +5,7 @@ export type Holiday={date:Date|string;description?:string};
 export function getSLAConfig(p:Priority){return rules[p]}
 export function defaultBusinessHours():BusinessWindow[]{return[1,2,3,4,5].map(dayOfWeek=>({dayOfWeek,startHour:9,endHour:18}))}
 function dateKey(d:Date){return d.toISOString().slice(0,10)}
-function isBusinessMinute(d:Date,hours:BusinessWindow[],holidays:Holiday[]=[]){if(holidays.some(h=>dateKey(new Date(h.date))===dateKey(d)))return false;let w=hours.find(x=>x.dayOfWeek===d.getDay());return !!w&&d.getHours()>=w.startHour&&d.getHours()<w.endHour}
+function isBusinessMinute(d:Date,hours:BusinessWindow[],holidays:Holiday[]=[]){if(holidays.some(h=>dateKey(new Date(h.date))===dateKey(d)))return false;let w=hours.find(x=>x.dayOfWeek===d.getUTCDay());return !!w&&d.getUTCHours()>=w.startHour&&d.getUTCHours()<w.endHour}
 export function addBusinessHours(start:Date,hoursToAdd:number,hours=defaultBusinessHours(),holidays:Holiday[]=[]){let d=new Date(start),remaining=Math.ceil(hoursToAdd*60);while(remaining>0){d=new Date(d.getTime()+60000);if(isBusinessMinute(d,hours,holidays))remaining--}return d}
 export function businessMinutesBetween(start:Date,end:Date,hours=defaultBusinessHours(),holidays:Holiday[]=[]){let d=new Date(start),minutes=0;while(d<end){if(isBusinessMinute(d,hours,holidays))minutes++;d=new Date(d.getTime()+60000)}return minutes}
 export function calculateDueDate(p:Priority,createdAt=new Date(),hours=defaultBusinessHours(),holidays:Holiday[]=[]){return addBusinessHours(createdAt,rules[p].resolutionHrs,hours,holidays)}

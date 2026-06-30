@@ -1,1 +1,21 @@
-import './globals.css';import {Inter} from 'next/font/google';import {SessionProvider} from '@/components/Providers';const inter=Inter({subsets:['latin']});export const metadata={title:'DeskForge Pro',description:'Enterprise IT Helpdesk'};export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body className={inter.className}><SessionProvider>{children}</SessionProvider></body></html>}
+import './globals.css';
+import type {Metadata} from 'next';
+import {Inter} from 'next/font/google';
+import {Providers} from '@/components/Providers';
+
+const inter = Inter({subsets: ['latin']});
+
+export const metadata: Metadata = {
+  title: 'DeskForge Pro',
+  description: 'Enterprise IT Helpdesk',
+};
+
+export default function RootLayout({children}: {children: React.ReactNode}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
