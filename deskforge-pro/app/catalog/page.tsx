@@ -1,6 +1,10 @@
 import {Shell} from '@/components/Shell';
-import {prisma} from '@/lib/prisma';
-import {requireUser} from '@/lib/session';
-import {isLocalDemo} from '@/lib/demo-data';
-export const dynamic='force-dynamic';
-export default async function Page(){let items:any[]=[{id:'svc1',category:'Access',name:'New user onboarding',description:'Laptop, email, VPN and app access package.',deliveryHours:24,cost:null},{id:'svc2',category:'Hardware',name:'Laptop replacement',description:'Request a replacement device after approval.',deliveryHours:48,cost:null},{id:'svc3',category:'Software',name:'Adobe license',description:'Submit a software license request.',deliveryHours:12,cost:null}];if(!isLocalDemo()){let u=await requireUser();items=await prisma.serviceCatalogItem.findMany({where:{tenantId:u.tenantId,isActive:true},orderBy:[{category:'asc'},{name:'asc'}]})}return <Shell><div className="mb-7 rounded-2xl bg-gradient-to-r from-blue-950 to-blue-600 p-10 text-white"><h1 className="text-3xl font-bold">Service Catalog</h1><p className="mt-2 text-blue-100">Request approved IT services through guided forms and fulfillment workflows.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{items.map(x=><article className="card" key={x.id}><span className="badge bg-blue-100 text-blue-800">{x.category}</span><h2 className="my-3 text-xl font-bold">{x.name}</h2><p className="text-slate-500">{x.description}</p><div className="mt-4 flex justify-between text-sm"><span>{x.deliveryHours?`${x.deliveryHours}h target`:'Custom target'}</span><span>{x.cost?`INR ${x.cost}`:'No charge'}</span></div><button className="btn mt-5 w-full">Request service</button></article>)}</div></Shell>}
+import {CatalogList} from '@/components/catalog/CatalogList';
+
+export default function Page() {
+  return (
+    <Shell>
+      <CatalogList />
+    </Shell>
+  );
+}

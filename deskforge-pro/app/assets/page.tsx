@@ -1,6 +1,10 @@
 import {Shell} from '@/components/Shell';
-import {prisma} from '@/lib/prisma';
-import {requireUser} from '@/lib/session';
-import {demoAssets,isLocalDemo} from '@/lib/demo-data';
-export const dynamic='force-dynamic';
-export default async function Page(){let assets:any[]=demoAssets.map(([assetTag,name,type,owner,status,serialNumber])=>({id:assetTag,assetTag,name,type,owner:{name:owner},status,serialNumber}));if(!isLocalDemo()){let u=await requireUser('asset:read');assets=await prisma.asset.findMany({where:{tenantId:u.tenantId},include:{owner:true},orderBy:{updatedAt:'desc'}})}return <Shell><div className="mb-6"><h1 className="text-3xl font-bold">Asset & CMDB</h1><p className="text-slate-500">Configuration ownership, lifecycle and impact relationships.</p></div><div className="card overflow-x-auto p-0"><table className="table"><thead><tr><th>Tag</th><th>Name</th><th>Type</th><th>Owner</th><th>Status</th><th>Serial</th></tr></thead><tbody>{assets.map(a=><tr key={a.id}><td className="font-mono text-blue-700">{a.assetTag}</td><td className="font-semibold">{a.name}</td><td>{a.type}</td><td>{a.owner?.name||'Unassigned'}</td><td>{a.status}</td><td>{a.serialNumber||'-'}</td></tr>)}</tbody></table></div></Shell>}
+import {AssetList} from '@/components/assets/AssetList';
+
+export default function Page() {
+  return (
+    <Shell>
+      <AssetList />
+    </Shell>
+  );
+}

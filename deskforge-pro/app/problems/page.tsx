@@ -1,6 +1,10 @@
 import {Shell} from '@/components/Shell';
-import {prisma} from '@/lib/prisma';
-import {requireUser} from '@/lib/session';
-import {demoProblems,isLocalDemo} from '@/lib/demo-data';
-export const dynamic='force-dynamic';
-export default async function Page(){let items:any[]=demoProblems.map(([id,title,status,owner,incidents,workaround])=>({id,title,status,owner:{name:owner},_count:{incidents},workaround}));if(!isLocalDemo()){let u=await requireUser('problem:manage');items=await prisma.problem.findMany({where:{tenantId:u.tenantId},include:{owner:true,_count:{select:{incidents:true}}},orderBy:{updatedAt:'desc'}})}return <Shell><h1 className="text-3xl font-bold">Problem Management</h1><p className="mb-6 text-slate-500">Remove root causes behind recurring incidents.</p><div className="card overflow-x-auto p-0"><table className="table"><thead><tr><th>ID</th><th>Problem</th><th>Status</th><th>Owner</th><th>Incidents</th><th>Known workaround</th></tr></thead><tbody>{items.map(x=><tr key={x.id}><td className="font-mono text-blue-700">{x.id}</td><td className="font-semibold">{x.title}</td><td>{x.status}</td><td>{x.owner.name}</td><td>{x._count.incidents}</td><td>{x.workaround?'Available':'-'}</td></tr>)}</tbody></table></div></Shell>}
+import {ProblemList} from '@/components/problems/ProblemList';
+
+export default function Page() {
+  return (
+    <Shell>
+      <ProblemList />
+    </Shell>
+  );
+}

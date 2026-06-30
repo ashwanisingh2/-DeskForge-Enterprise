@@ -1,6 +1,31 @@
-import {prisma} from '@/lib/prisma';
+import {redirect} from 'next/navigation';
 import {Shell} from '@/components/Shell';
+import {SlaEditor} from '@/components/settings/SlaEditor';
+import {BusinessHoursEditor} from '@/components/settings/BusinessHoursEditor';
+import {HolidaysEditor} from '@/components/settings/HolidaysEditor';
+import {CannedResponsesEditor} from '@/components/settings/CannedResponsesEditor';
 import {requireUser} from '@/lib/session';
+import {can} from '@/lib/rbac';
 import {isLocalDemo} from '@/lib/demo-data';
-export const dynamic='force-dynamic';
-export default async function Page(){let sla:any[]=[{id:'s1',priority:'CRITICAL',responseTimeHrs:1,resolutionTimeHrs:4},{id:'s2',priority:'HIGH',responseTimeHrs:4,resolutionTimeHrs:8},{id:'s3',priority:'MEDIUM',responseTimeHrs:8,resolutionTimeHrs:24}],canned:any[]=[{id:'c1',title:'Ticket received',content:'We have received your ticket.'},{id:'c2',title:'Resolved',content:'Please confirm the issue is fixed.'}],hours:any[]=[1,2,3,4,5].map(dayOfWeek=>({id:String(dayOfWeek),dayOfWeek,startHour:9,endHour:18})),holidays:any[]=[{id:'h1',date:new Date().toISOString(),description:'Company holiday'}];if(!isLocalDemo()){let session=await requireUser('settings:admin');sla=await prisma.sLAConfig.findMany({where:{tenantId:session.tenantId}});canned=await prisma.cannedResponse.findMany({where:{tenantId:session.tenantId}});hours=await prisma.businessHour.findMany({where:{tenantId:session.tenantId},orderBy:{dayOfWeek:'asc'}});holidays=await prisma.holiday.findMany({where:{tenantId:session.tenantId},orderBy:{date:'asc'}})}return <Shell><h1 className="text-3xl font-bold">Settings</h1><p className="mb-6 text-slate-500">Configure service policy and team responses.</p><div className="grid gap-5 lg:grid-cols-2"><section className="card"><h2 className="mb-4 text-xl font-bold">SLA policy</h2>{sla.map(x=><div key={x.id} className="grid grid-cols-3 border-t py-3"><b>{x.priority}</b><span>{x.responseTimeHrs}h response</span><span>{x.resolutionTimeHrs}h resolution</span></div>)}</section><section className="card"><h2 className="mb-4 text-xl font-bold">Business hours</h2>{hours.map(x=><div key={x.id} className="grid grid-cols-3 border-t py-3"><b>Day {x.dayOfWeek}</b><span>{x.startHour}:00</span><span>{x.endHour}:00</span></div>)}<h3 className="mt-5 font-bold">Holidays</h3>{holidays.map(x=><div key={x.id} className="border-t py-3"><b>{new Date(x.date).toLocaleDateString()}</b><p className="text-sm text-slate-500">{x.description}</p></div>)}</section><section className="card lg:col-span-2"><h2 className="mb-4 text-xl font-bold">Canned responses</h2>{canned.map(x=><div key={x.id} className="border-t py-3"><b>{x.title}</b><p className="text-sm text-slate-500">{x.content}</p></div>)}</section></div></Shell>}
+
+export const dynamic = 'force-dynamic';
+
+export default async function Page() {
+  if (!isLocalDemo()) {
+    const u = await requireUser();
+    if (!can(u.role, 'settings:admin')) redirect('/dashboard');
+  }
+
+  return (
+    <Shell>
+      <h1 className="text-3xl font-bold">Settings</h1>
+      <p className="mb-6 text-muted-foreground">Configure SLA policy, business hours, holidays and team responses.</p>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <SlaEditor />
+        <BusinessHoursEditor />
+        <HolidaysEditor />
+        <CannedResponsesEditor />
+      </div>
+    </Shell>
+  );
+}

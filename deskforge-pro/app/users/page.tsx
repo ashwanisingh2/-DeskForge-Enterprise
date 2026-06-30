@@ -1,6 +1,20 @@
-import {prisma} from '@/lib/prisma';
+import {redirect} from 'next/navigation';
 import {Shell} from '@/components/Shell';
+import {UserManagement} from '@/components/users/UserManagement';
 import {requireUser} from '@/lib/session';
+import {can} from '@/lib/rbac';
 import {isLocalDemo} from '@/lib/demo-data';
-export const dynamic='force-dynamic';
-export default async function Page(){let u:any[]=[{id:'u1',name:'Ashwani Sharma',email:'admin@deskforge.local',role:'ADMIN',department:'IT',isActive:true},{id:'u2',name:'Priya Mehta',email:'priya@deskforge.local',role:'AGENT',department:'IT',isActive:true},{id:'u3',name:'Rahul Gupta',email:'rahul@deskforge.local',role:'END_USER',department:'Business',isActive:true}];if(!isLocalDemo()){let session=await requireUser('user:manage');u=await prisma.user.findMany({where:{tenantId:session.tenantId},orderBy:{name:'asc'}})}return <Shell><div className="mb-6 flex justify-between"><div><h1 className="text-3xl font-bold">User Management</h1><p className="text-slate-500">Access, roles and service ownership.</p></div><button className="btn">+ Add User</button></div><div className="card overflow-x-auto p-0"><table className="table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Department</th><th>Status</th></tr></thead><tbody>{u.map(x=><tr key={x.id}><td className="font-semibold">{x.name}</td><td>{x.email}</td><td>{x.role}</td><td>{x.department||'-'}</td><td>{x.isActive?'Active':'Inactive'}</td></tr>)}</tbody></table></div></Shell>}
+
+export const dynamic = 'force-dynamic';
+
+export default async function Page() {
+  if (!isLocalDemo()) {
+    const u = await requireUser();
+    if (!can(u.role, 'user:manage')) redirect('/dashboard');
+  }
+  return (
+    <Shell>
+      <UserManagement />
+    </Shell>
+  );
+}
