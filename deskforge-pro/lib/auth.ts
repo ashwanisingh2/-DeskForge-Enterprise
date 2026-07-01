@@ -15,7 +15,9 @@ function localDemoUser(username: string, password?: string) {
 }
 
 export const authOptions: NextAuthOptions = {
-  session: {strategy: 'jwt', maxAge: 30 * 60},
+  // 30-minute idle timeout that rolls forward on activity (updateAge). Short-lived
+  // 15-minute access tokens + rotating refresh tokens are issued separately below.
+  session: {strategy: 'jwt', maxAge: 30 * 60, updateAge: 5 * 60},
   pages: {signIn: '/login'},
   providers: [
     Credentials({
