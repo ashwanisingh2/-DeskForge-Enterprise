@@ -9,3 +9,5 @@ coverage/
 Thumbs.db
 prisma/*.db
 prisma/*.db-journal
+
+odysseus/
