@@ -154,10 +154,16 @@ export function TicketList() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SavedViews current={filters} onApply={applyView} />
-        <Button variant="outline" size="sm" loading={exporting} onClick={exportCsv}>
-          <Download className="h-4 w-4" /> Export CSV
-        </Button>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Tickets</h1>
+          <p className="text-sm text-muted-foreground">Track, triage and resolve every request.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <SavedViews current={filters} onApply={applyView} />
+          <Button variant="outline" size="sm" loading={exporting} onClick={exportCsv}>
+            <Download className="h-4 w-4" /> Export
+          </Button>
+        </div>
       </div>
       <TicketFilters value={filters} onChange={updateFilters} onReset={() => applyView(DEFAULT_FILTERS)} agents={agents} showAssignee={canManage} />
 

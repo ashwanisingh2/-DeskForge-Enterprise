@@ -1,11 +1,10 @@
 import {Shell} from '@/components/Shell';
-import {Dashboard} from '@/components/Dashboard';
-import {demoDashboard} from '@/lib/demo-data';
+import {AnalyticsView} from '@/components/analytics/AnalyticsView';
 
 export default function Page() {
   return (
     <Shell>
-      <Dashboard initial={demoDashboard as never} />
+      <AnalyticsView />
     </Shell>
   );
 }

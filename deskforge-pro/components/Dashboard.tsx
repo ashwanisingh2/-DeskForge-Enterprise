@@ -48,7 +48,7 @@ export function Dashboard({initial}: {initial: DashboardData}) {
   const d = data ?? initial;
 
   const kpis: Kpi[] = [
-    {label: 'Total tickets', value: d.totalTickets, icon: Inbox, tone: 'text-slate-500'},
+    {label: 'Total tickets', value: d.totalTickets, icon: Inbox, tone: 'text-slate-400'},
     {label: 'Open', value: d.openTickets, icon: TicketCheck, tone: 'text-blue-500'},
     {label: 'In progress', value: d.inProgressTickets ?? 0, icon: Loader2, tone: 'text-violet-500'},
     {label: 'Resolved today', value: d.resolvedToday, icon: CheckCircle2, tone: 'text-emerald-500'},
@@ -78,12 +78,14 @@ export function Dashboard({initial}: {initial: DashboardData}) {
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <Card key={kpi.label} className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">{kpi.label}</span>
-                <Icon className={cn('h-4 w-4', kpi.tone)} />
+            <Card key={kpi.label} className="card-hover p-4 hover-glow">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{kpi.label}</span>
+                <span className={cn('rounded-lg p-1.5', kpi.tone.replace('text-','bg-').replace('-500','-500/15').replace('-400','-400/15'))}>
+                  <Icon className={cn('h-3.5 w-3.5', kpi.tone)} />
+                </span>
               </div>
-              <strong className="mt-2 block text-3xl tabular-nums">{kpi.value}</strong>
+              <strong className="mt-3 block text-3xl font-bold tabular-nums tracking-tight">{kpi.value}</strong>
             </Card>
           );
         })}
