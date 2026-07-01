@@ -4,10 +4,25 @@ import {requireUser} from '@/lib/session';
 import {commentSchema} from '@/lib/validations';
 import {sendNewCommentEmail} from '@/lib/email';
 import {structuredError} from '@/lib/api-errors';
+import {isLocalDemo,demoUser} from '@/lib/demo-data';
 
 export async function POST(req:NextRequest,ctx:{params:Promise<{id:string}>}){
   let {id}=await ctx.params;
   try{
+    // Demo mode: return a synthetic comment without hitting the DB.
+    if(isLocalDemo()){
+      const d=commentSchema.parse(await req.json());
+      return NextResponse.json({
+        id:`cmt-${Date.now()}`,
+        content:d.content,
+        isInternal:d.isInternal,
+        ticketId:id,
+        authorId:demoUser.id,
+        author:{id:demoUser.id,name:demoUser.name},
+        createdAt:new Date().toISOString(),
+        updatedAt:new Date().toISOString(),
+      },{status:201});
+    }
     let u=await requireUser('comment:create'),d=commentSchema.parse(await req.json());
     let ticket=await prisma.ticket.findFirst({where:{id:id,tenantId:u.tenantId,deletedAt:null}});
     if(!ticket)return NextResponse.json({error:{code:'NOT_FOUND',message:'Not found'}},{status:404});

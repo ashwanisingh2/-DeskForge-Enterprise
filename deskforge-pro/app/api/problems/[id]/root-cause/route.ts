@@ -5,6 +5,29 @@ import {prisma} from '@/lib/prisma';
 import {requireUser} from '@/lib/session';
 import {sanitizeHtml} from '@/lib/sanitize';
 import {normalizeFiveWhys} from '@/lib/problem-management';
+import {isLocalDemo,demoProblemRecords} from '@/lib/demo-data';
 
 const schema=z.object({rootCause:z.string().min(3).transform(sanitizeHtml),symptoms:z.string().optional().transform(x=>x?sanitizeHtml(x):x),contributingFactors:z.array(z.string()).default([]),workaround:z.string().optional().transform(x=>x?sanitizeHtml(x):x),fiveWhys:z.array(z.string()).default([]),isKnownError:z.boolean().default(false),kbArticleId:z.string().nullable().optional(),status:z.enum(['INVESTIGATING','IDENTIFIED','MITIGATED','CLOSED']).optional(),resolveLinkedIncidents:z.boolean().default(false)});
-export async function POST(req:NextRequest,ctx:{params:Promise<{id:string}>}){let {id}=await ctx.params,u=await requireUser('problem:manage'),data=schema.parse(await req.json()),problem=await prisma.problem.findFirst({where:{id,tenantId:u.tenantId},include:{incidents:true}});if(!problem)return NextResponse.json({error:'NOT_FOUND'},{status:404});let updated=await prisma.$transaction(async tx=>{let p=await tx.problem.update({where:{id},data:{rootCause:data.rootCause,symptoms:data.symptoms,contributingFactors:data.contributingFactors as Prisma.InputJsonArray,workaround:data.workaround,fiveWhys:normalizeFiveWhys(data.fiveWhys) as Prisma.InputJsonArray,isKnownError:data.isKnownError,kbArticleId:data.kbArticleId,status:data.status||problem.status}});if((data.status==='CLOSED'||problem.status==='CLOSED')&&data.resolveLinkedIncidents)await tx.ticket.updateMany({where:{id:{in:problem.incidents.map(i=>i.ticketId)},tenantId:u.tenantId,status:{notIn:['CLOSED','RESOLVED']}},data:{status:'RESOLVED',resolvedAt:new Date()}});return p});return NextResponse.json(updated)}
+
+// In-memory store for demo RCA updates.
+const demoRcaStore = new Map<string, any>(demoProblemRecords.map(p => [p.id, {...p}]));
+
+export async function POST(req:NextRequest,ctx:{params:Promise<{id:string}>}){
+  let {id}=await ctx.params;
+  try{
+    const data=schema.parse(await req.json());
+    if(isLocalDemo()){
+      const existing=demoRcaStore.get(id)??demoProblemRecords.find(p=>p.id===id);
+      if(!existing)return NextResponse.json({error:'NOT_FOUND'},{status:404});
+      const updated={...existing,rootCause:data.rootCause,symptoms:data.symptoms,contributingFactors:data.contributingFactors,workaround:data.workaround,fiveWhys:normalizeFiveWhys(data.fiveWhys),isKnownError:data.isKnownError,kbArticleId:data.kbArticleId??null,status:data.status??existing.status};
+      demoRcaStore.set(id,updated);
+      return NextResponse.json(updated);
+    }
+    let u=await requireUser('problem:manage'),problem=await prisma.problem.findFirst({where:{id,tenantId:u.tenantId},include:{incidents:true}});
+    if(!problem)return NextResponse.json({error:'NOT_FOUND'},{status:404});
+    let updated=await prisma.$transaction(async tx=>{let p=await tx.problem.update({where:{id},data:{rootCause:data.rootCause,symptoms:data.symptoms,contributingFactors:data.contributingFactors as Prisma.InputJsonArray,workaround:data.workaround,fiveWhys:normalizeFiveWhys(data.fiveWhys) as Prisma.InputJsonArray,isKnownError:data.isKnownError,kbArticleId:data.kbArticleId,status:data.status||problem.status}});if((data.status==='CLOSED'||problem.status==='CLOSED')&&data.resolveLinkedIncidents)await tx.ticket.updateMany({where:{id:{in:problem.incidents.map(i=>i.ticketId)},tenantId:u.tenantId,status:{notIn:['CLOSED','RESOLVED']}},data:{status:'RESOLVED',resolvedAt:new Date()}});return p});
+    return NextResponse.json(updated);
+  }catch(e:any){
+    return NextResponse.json({error:e?.message||'ERROR'},{status:e?.message==='FORBIDDEN'?403:400});
+  }
+}

@@ -101,8 +101,8 @@ export function AnalyticsView() {
   const [period, setPeriod] = useState('14');
 
   const {data: live, isLoading, isFetching} = useQuery({
-    queryKey: ['analytics'],
-    queryFn: () => apiGet<DashboardData>('/api/analytics'),
+    queryKey: ['analytics', period],
+    queryFn: () => apiGet<DashboardData>(`/api/analytics?days=${period}`),
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
