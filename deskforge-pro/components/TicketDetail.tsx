@@ -16,6 +16,9 @@ import {TimeTracking} from '@/components/tickets/detail/TimeTracking';
 import {RelatedTickets} from '@/components/tickets/detail/RelatedTickets';
 import {PropertiesPanel} from '@/components/tickets/detail/PropertiesPanel';
 import {TicketActions} from '@/components/tickets/detail/TicketActions';
+import {RequesterCard} from '@/components/tickets/detail/RequesterCard';
+import {Checklist} from '@/components/tickets/detail/Checklist';
+import {Resolution} from '@/components/tickets/detail/Resolution';
 
 export function TicketDetail({initial}: {initial: any}) {
   const router = useRouter();
@@ -38,8 +41,12 @@ export function TicketDetail({initial}: {initial: any}) {
   const relationCount = relatedTo.length + relatedFrom.length;
 
   const [tab, setTab] = useState('conversation');
+  const checklist = t.checklist ?? [];
+  const checklistCount = Array.isArray(checklist) ? checklist.length : 0;
   const tabs: TabItem[] = [
     {value: 'conversation', label: 'Conversation', count: comments.length},
+    {value: 'checklist', label: 'Checklist', count: checklistCount || undefined},
+    {value: 'resolution', label: 'Resolution'},
     {value: 'activity', label: 'Activity', count: logs.length},
     {value: 'attachments', label: 'Attachments'},
     {value: 'time', label: 'Time'},
@@ -103,6 +110,8 @@ export function TicketDetail({initial}: {initial: any}) {
             <Tabs tabs={tabs} value={tab} onChange={setTab} />
             <div className="pt-5">
               {tab === 'conversation' && <Conversation ticketId={t.id} comments={comments} canInternal={canManage} />}
+              {tab === 'checklist' && <Checklist ticketId={t.id} initial={checklist} canManage={canManage} />}
+              {tab === 'resolution' && <Resolution ticketId={t.id} resolutionNote={t.resolutionNote} status={t.status} allowedTransitions={t.allowedTransitions} canManage={canManage} />}
               {tab === 'activity' && <ActivityTimeline logs={logs} />}
               {tab === 'attachments' && <Attachments ticketId={t.id} />}
               {tab === 'time' && <TimeTracking ticketId={t.id} canLog={canManage} />}
@@ -111,11 +120,12 @@ export function TicketDetail({initial}: {initial: any}) {
           </div>
         </section>
 
-        <aside>
-          <Card className="sticky top-20 p-5">
+        <aside className="space-y-5">
+          <Card className="p-5">
             <h3 className="mb-4 font-bold">Properties</h3>
             <PropertiesPanel ticket={t} canManage={canManage} />
           </Card>
+          <RequesterCard requester={t.requester} currentTicketId={t.id} />
         </aside>
       </div>
     </div>

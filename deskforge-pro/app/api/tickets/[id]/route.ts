@@ -8,7 +8,7 @@ import {demoTickets,isLocalDemo} from '@/lib/demo-data';
 // In-memory demo ticket store — persists for the lifetime of the dev server process.
 const demoStore = new Map<string, any>(demoTickets.map(t => [t.id, {...t}]));
 
-const allowed=['title','description','status','priority','assigneeId','category','subcategory','impact','urgency'] as const;
+const allowed=['title','description','status','priority','assigneeId','category','subcategory','impact','urgency','checklist','resolutionNote'] as const;
 function failure(error:unknown){let message=error instanceof Error?error.message:'UNKNOWN',al=(error as any)?.allowed;let status=message==='UNAUTHORIZED'?401:message==='FORBIDDEN'||message==='TRANSITION_FORBIDDEN'?403:message.startsWith('INVALID_TRANSITION')?400:400;return NextResponse.json({error:message,allowedTransitions:al},{status})}
 
 export async function GET(_:NextRequest,ctx:{params:Promise<{id:string}>}){
