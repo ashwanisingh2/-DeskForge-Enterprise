@@ -86,6 +86,8 @@ model Ticket {
   closedAt        DateTime?
   firstResponseAt DateTime?
   slaStatus       SLAStatus         @default(ON_TRACK)
+  resolutionNote  String?           @db.Text
+  checklist       Json?
   deletedAt       DateTime?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
