@@ -1,1 +1,10 @@
-import {Shell} from '@/components/Shell';import {TicketForm} from '@/components/TicketForm';export default function Page(){return <Shell><h1 className="text-3xl font-bold">Create ticket</h1><p className="mb-6 text-slate-500">Give the service desk the context it needs.</p><TicketForm/></Shell>}
+import {Shell} from '@/components/Shell';
+import {TicketForm} from '@/components/TicketForm';
+
+export default function Page() {
+  return (
+    <Shell>
+      <TicketForm />
+    </Shell>
+  );
+}

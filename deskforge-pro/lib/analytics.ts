@@ -1,4 +1,5 @@
 import type {Priority, Ticket, TicketStatus} from '@prisma/client';
+import {getSLAStatus} from './sla';
 
 const STATUSES: TicketStatus[] = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'PENDING', 'PENDING_CUSTOMER', 'ON_HOLD', 'RESOLVED', 'CLOSED'];
 const PRIORITIES: Priority[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
@@ -65,6 +66,10 @@ export function computeDashboard(tickets: TicketForAnalytics[]): DashboardData {
       requester: t.requester?.name ?? '—',
     }));
 
+  // SLA is computed live from due date + status so it reflects reality without a cron worker.
+  const liveSla = (t: TicketForAnalytics) => getSLAStatus({dueDate: t.dueDate, status: t.status, createdAt: t.createdAt}, now);
+  const breached = tickets.filter((t) => liveSla(t) === 'BREACHED').length;
+
   return {
     totalTickets: tickets.length,
     openTickets: tickets.filter((t) => t.status === 'OPEN').length,
@@ -72,9 +77,9 @@ export function computeDashboard(tickets: TicketForAnalytics[]): DashboardData {
     resolvedToday: resolved.filter((t) => t.updatedAt.toDateString() === today).length,
     overdueTickets: tickets.filter((t) => t.dueDate && t.dueDate < now && !TERMINAL.includes(t.status)).length,
     criticalOpen: tickets.filter((t) => t.priority === 'CRITICAL' && !TERMINAL.includes(t.status)).length,
-    slaBreached: tickets.filter((t) => t.slaStatus === 'BREACHED').length,
+    slaBreached: breached,
     avgResolutionTime: +(resolutionHours.reduce((a, b) => a + b, 0) / (resolutionHours.length || 1)).toFixed(1),
-    slaCompliance: tickets.length ? Math.round((tickets.filter((t) => t.slaStatus !== 'BREACHED').length / tickets.length) * 100) : 100,
+    slaCompliance: tickets.length ? Math.round(((tickets.length - breached) / tickets.length) * 100) : 100,
     ticketsByStatus: byKey(STATUSES, (t) => t.status).map(({key, count}) => ({status: key, count})),
     ticketsByPriority: byKey(PRIORITIES, (t) => t.priority).map(({key, count}) => ({priority: key, count})),
     ticketsByCategory: Object.entries(categoryCounts).map(([category, count]) => ({category, count})),

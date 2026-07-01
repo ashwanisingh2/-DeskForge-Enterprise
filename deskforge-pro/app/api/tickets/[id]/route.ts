@@ -3,6 +3,7 @@ import {Prisma,TicketStatus} from '@prisma/client';
 import {prisma} from '@/lib/prisma';
 import {requireUser} from '@/lib/session';
 import {allowedTransitions,assertTransition,lifecycleDates} from '@/lib/ticket-lifecycle';
+import {getSLAStatus} from '@/lib/sla';
 import {demoTickets,isLocalDemo} from '@/lib/demo-data';
 
 // In-memory demo ticket store — persists for the lifetime of the dev server process.
@@ -21,7 +22,7 @@ export async function GET(_:NextRequest,ctx:{params:Promise<{id:string}>}){
         : NextResponse.json({error:'NOT_FOUND'},{status:404});
     }
     let u=await requireUser(),ticket=await prisma.ticket.findFirst({where:{id,tenantId:u.tenantId,deletedAt:null,...(u.role==='END_USER'?{requesterId:u.id}:{})},include:{requester:true,assignee:true,comments:{include:{author:true},orderBy:{createdAt:'asc'}},activityLogs:{include:{user:true},orderBy:{createdAt:'desc'}},attachments:true,relatedTo:{include:{ticketB:true}},relatedFrom:{include:{ticketA:true}}}});
-    return ticket?NextResponse.json({...ticket,allowedTransitions:allowedTransitions(ticket.status)}):NextResponse.json({error:'NOT_FOUND'},{status:404});
+    return ticket?NextResponse.json({...ticket,slaStatus:getSLAStatus({dueDate:ticket.dueDate,status:ticket.status,createdAt:ticket.createdAt}),allowedTransitions:allowedTransitions(ticket.status)}):NextResponse.json({error:'NOT_FOUND'},{status:404});
   }catch(e){return failure(e)}}
 
 export async function PATCH(req:NextRequest,ctx:{params:Promise<{id:string}>}){

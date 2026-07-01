@@ -3,6 +3,7 @@ import {prisma} from '@/lib/prisma';
 import {requireUser} from '@/lib/session';
 import {ticketSchema} from '@/lib/validations';
 import {calculateDueDate} from '@/lib/sla';
+import {getSLAStatus} from '@/lib/sla';
 import {sendTicketAssignedEmail,sendTicketCreatedEmail} from '@/lib/email';
 import {structuredError} from '@/lib/api-errors';
 import {demoTickets,isLocalDemo} from '@/lib/demo-data';
@@ -30,7 +31,8 @@ export async function GET(req:NextRequest){
       prisma.ticket.findMany({where,include:{assignee:{select:{id:true,name:true}},requester:{select:{id:true,name:true}}},skip:(page-1)*limit,take:limit,orderBy:{[sortBy]:sortOrder}}),
       prisma.ticket.count({where}),
     ]);
-    return NextResponse.json({tickets,total,page,limit,totalPages:Math.max(1,Math.ceil(total/limit))});
+    let now=new Date(),withSla=tickets.map(t=>({...t,slaStatus:getSLAStatus({dueDate:t.dueDate,status:t.status,createdAt:t.createdAt},now)}));
+    return NextResponse.json({tickets:withSla,total,page,limit,totalPages:Math.max(1,Math.ceil(total/limit))});
   }catch(e:any){
     return NextResponse.json({error:{code:'UNAUTHORIZED',message:'Unauthorized'}},{status:e?.message==='FORBIDDEN'?403:401});
   }
