@@ -42,18 +42,17 @@ export async function POST(req:NextRequest){
   try{
     if(isLocalDemo()){let data=ticketSchema.parse(await req.json()),ticket={...demoTickets[0],...data,id:`TKT-${String(demoTickets.length+1).padStart(4,'0')}`,requester:{name:'Ashwani Sharma'},assignee:null,status:'OPEN',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),comments:[],activityLogs:[]};return NextResponse.json(ticket,{status:201})}
     let u=await requireUser('ticket:create'),data=ticketSchema.parse(await req.json());
-    let ticket;
-    for(let attempt=0;;attempt++){
-      let last=await prisma.ticket.findFirst({orderBy:{id:'desc'},select:{id:true}});
-      let id=`TKT-${String((+(last?.id.split('-')[1]||0))+1).padStart(4,'0')}`;
-      try{
-        ticket=await prisma.ticket.create({data:{...data,id,tenantId:u.tenantId,requesterId:u.id,dueDate:calculateDueDate(data.priority),activityLogs:{create:{action:'created',detail:'Ticket created',userId:u.id}}},include:{requester:true,assignee:true}});
-        break;
-      }catch(err:any){
-        if(err?.code==='P2002'&&attempt<5)continue;
-        throw err;
-      }
+    // Atomic, race-free ticket ID via Postgres sequence (DF-2026-012).
+    let id: string;
+    try {
+      const seq = await prisma.$queryRawUnsafe<{next: bigint}[]>("SELECT nextval('ticket_seq') AS next");
+      id = `TKT-${String(Number(seq[0].next)).padStart(4, '0')}`;
+    } catch {
+      // Fallback for databases where the sequence is not yet provisioned.
+      const last = await prisma.ticket.findFirst({orderBy: {id: 'desc'}, select: {id: true}});
+      id = `TKT-${String(+(last?.id.split('-')[1] || 0) + 1).padStart(4, '0')}`;
     }
+    let ticket = await prisma.ticket.create({data:{...data,id,tenantId:u.tenantId,requesterId:u.id,dueDate:calculateDueDate(data.priority),activityLogs:{create:{action:'created',detail:'Ticket created',userId:u.id}}},include:{requester:true,assignee:true}});
     await prisma.auditLog.create({data:{tenantId:u.tenantId,userId:u.id,action:'CREATE',entityType:'Ticket',entityId:ticket.id,newValue:ticket as any}});
     await sendTicketCreatedEmail(ticket,ticket.requester);
     if(ticket.assignee)await sendTicketAssignedEmail(ticket,ticket.assignee);
