@@ -3,9 +3,10 @@ import {useEffect, useMemo, useState} from 'react';
 import Link from 'next/link';
 import {useSession} from 'next-auth/react';
 import {keepPreviousData, useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import {Inbox, Plus} from 'lucide-react';
+import {Download, Inbox, Plus} from 'lucide-react';
 import {ApiError, apiGet, apiSend} from '@/lib/api-client';
 import {useDebounce} from '@/lib/hooks/use-debounce';
+import {toCsv, downloadCsv} from '@/lib/export-csv';
 import {Button} from '@/components/ui/button';
 import {Card} from '@/components/ui/card';
 import {TableSkeleton} from '@/components/ui/skeleton';
@@ -124,9 +125,40 @@ export function TicketList() {
   const rangeStart = useMemo(() => (total === 0 ? 0 : (page - 1) * LIMIT + 1), [page, total]);
   const rangeEnd = Math.min(page * LIMIT, total);
 
+  const [exporting, setExporting] = useState(false);
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const qs = buildQuery(filters, debouncedSearch, 1).replace(/limit=\d+/, 'limit=1000');
+      const res = await apiGet<TicketsResponse>(`/api/tickets?${qs}`);
+      const csv = toCsv(res.tickets as any[], [
+        {key: 'id', label: 'ID'},
+        {key: 'title', label: 'Title'},
+        {key: 'status', label: 'Status'},
+        {key: 'priority', label: 'Priority'},
+        {key: 'category', label: 'Category'},
+        {key: 'requester', label: 'Requester', value: (r: any) => r.requester?.name ?? ''},
+        {key: 'assignee', label: 'Assignee', value: (r: any) => r.assignee?.name ?? ''},
+        {key: 'slaStatus', label: 'SLA'},
+        {key: 'createdAt', label: 'Created', value: (r: any) => new Date(r.createdAt).toISOString()},
+      ]);
+      downloadCsv(`tickets-${new Date().toISOString().slice(0, 10)}`, csv);
+      toast({tone: 'success', title: `Exported ${res.tickets.length} ticket(s)`});
+    } catch (err) {
+      toast({tone: 'error', title: 'Export failed', description: err instanceof ApiError ? err.message : 'Error'});
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <SavedViews current={filters} onApply={applyView} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SavedViews current={filters} onApply={applyView} />
+        <Button variant="outline" size="sm" loading={exporting} onClick={exportCsv}>
+          <Download className="h-4 w-4" /> Export CSV
+        </Button>
+      </div>
       <TicketFilters value={filters} onChange={updateFilters} onReset={() => applyView(DEFAULT_FILTERS)} agents={agents} showAssignee={canManage} />
 
       <Card className="overflow-x-auto p-0">

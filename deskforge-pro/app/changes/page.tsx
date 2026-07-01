@@ -1,6 +1,10 @@
 import {Shell} from '@/components/Shell';
-import {prisma} from '@/lib/prisma';
-import {requireUser} from '@/lib/session';
-import {demoChanges,isLocalDemo} from '@/lib/demo-data';
-export const dynamic='force-dynamic';
-export default async function Page(){let changes:any[]=demoChanges.map(([id,title,type,risk,status])=>({id,title,type,risk,status,requester:{name:'Ashwani Sharma'},approvals:[{status:'APPROVED'},{status:'PENDING'}]}));if(!isLocalDemo()){let u=await requireUser('change:manage');changes=await prisma.changeRequest.findMany({where:{tenantId:u.tenantId},include:{requester:true,approvals:true},orderBy:{createdAt:'desc'}})}return <Shell><h1 className="text-3xl font-bold">Change Management</h1><p className="mb-6 text-slate-500">CAB-controlled implementation, risk and rollback readiness.</p><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{changes.map(c=><article className="card" key={c.id}><div className="flex justify-between"><b className="font-mono text-blue-700">{c.id}</b><span className="badge bg-amber-100">{c.risk}</span></div><h2 className="my-3 text-lg font-bold">{c.title}</h2><p className="text-sm text-slate-500">{c.type} - {c.status}</p><p className="mt-3 text-sm">Requester: {c.requester.name}</p><p className="text-sm">Approvals: {c.approvals.filter((a:any)=>a.status==='APPROVED').length}/{c.approvals.length}</p></article>)}</div></Shell>}
+import {ChangeList} from '@/components/changes/ChangeList';
+
+export default function Page() {
+  return (
+    <Shell>
+      <ChangeList />
+    </Shell>
+  );
+}
