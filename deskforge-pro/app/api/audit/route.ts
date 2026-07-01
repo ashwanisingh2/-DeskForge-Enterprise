@@ -15,6 +15,12 @@ export async function GET(req: NextRequest) {
     if (q.get('entityType')) where.entityType = q.get('entityType');
     if (q.get('action')) where.action = q.get('action');
     if (q.get('search')) where.entityId = {contains: q.get('search')!, mode: 'insensitive'};
+    if (q.get('dateFrom') || q.get('dateTo')) {
+      where.createdAt = {
+        ...(q.get('dateFrom') && {gte: new Date(q.get('dateFrom')!)}),
+        ...(q.get('dateTo') && {lte: new Date(`${q.get('dateTo')!}T23:59:59`)}),
+      };
+    }
 
     const [logs, total] = await prisma.$transaction([
       prisma.auditLog.findMany({

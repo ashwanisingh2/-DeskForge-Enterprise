@@ -1,7 +1,7 @@
 'use client';
 import {useState} from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import {Plus, Trash2} from 'lucide-react';
+import {Pencil, Plus, Trash2, X} from 'lucide-react';
 import {ApiError, apiGet, apiSend} from '@/lib/api-client';
 import {Card} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
@@ -10,21 +10,32 @@ import {useToast} from '@/components/ui/toast';
 
 type Canned = {id: string; title: string; content: string; category?: string | null};
 
+const emptyForm = {title: '', content: '', category: ''};
+
 export function CannedResponsesEditor() {
   const {toast} = useToast();
   const queryClient = useQueryClient();
   const invalidate = () => queryClient.invalidateQueries({queryKey: ['canned']});
-  const [form, setForm] = useState({title: '', content: '', category: ''});
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const {data} = useQuery({queryKey: ['canned'], queryFn: () => apiGet<{responses: Canned[]}>('/api/settings/canned')});
   const responses = data?.responses ?? [];
 
-  const add = useMutation({
-    mutationFn: () => apiSend('/api/settings/canned', 'POST', {title: form.title, content: form.content, category: form.category || undefined}),
+  const reset = () => {
+    setForm(emptyForm);
+    setEditingId(null);
+  };
+
+  const save = useMutation({
+    mutationFn: () => {
+      const payload = {title: form.title, content: form.content, category: form.category || undefined};
+      return editingId ? apiSend('/api/settings/canned', 'PATCH', {id: editingId, ...payload}) : apiSend('/api/settings/canned', 'POST', payload);
+    },
     onSuccess: () => {
-      setForm({title: '', content: '', category: ''});
+      reset();
       invalidate();
-      toast({tone: 'success', title: 'Response saved'});
+      toast({tone: 'success', title: editingId ? 'Response updated' : 'Response saved'});
     },
     onError: (err) => toast({tone: 'error', title: 'Save failed', description: err instanceof ApiError ? err.message : 'Error'}),
   });
@@ -45,16 +56,21 @@ export function CannedResponsesEditor() {
         className="mb-4 grid gap-3 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();
-          if (form.title.trim().length >= 2 && form.content.trim().length >= 2) add.mutate();
+          if (form.title.trim().length >= 2 && form.content.trim().length >= 2) save.mutate();
         }}
       >
         <Input placeholder="Title" value={form.title} onChange={(e) => setForm({...form, title: e.target.value})} required />
         <Input placeholder="Category (optional)" value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} />
         <Textarea className="min-h-16 sm:col-span-2" placeholder="Response content" value={form.content} onChange={(e) => setForm({...form, content: e.target.value})} required />
-        <div className="sm:col-span-2">
-          <Button type="submit" size="sm" variant="outline" loading={add.isPending}>
-            <Plus className="h-4 w-4" /> Add response
+        <div className="flex gap-2 sm:col-span-2">
+          <Button type="submit" size="sm" variant={editingId ? 'primary' : 'outline'} loading={save.isPending}>
+            {editingId ? <><Pencil className="h-4 w-4" /> Update</> : <><Plus className="h-4 w-4" /> Add response</>}
           </Button>
+          {editingId && (
+            <Button type="button" size="sm" variant="ghost" onClick={reset}>
+              <X className="h-4 w-4" /> Cancel
+            </Button>
+          )}
         </div>
       </form>
 
@@ -69,9 +85,18 @@ export function CannedResponsesEditor() {
                 {r.category && <span className="ml-2 text-xs text-muted-foreground">{r.category}</span>}
                 <p className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{__html: r.content}} />
               </div>
-              <button onClick={() => remove.mutate(r.id)} aria-label="Remove" className="text-muted-foreground hover:text-destructive">
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => {setEditingId(r.id); setForm({title: r.title, content: r.content, category: r.category ?? ''}); window.scrollTo({top: 0, behavior: 'smooth'});}}
+                  aria-label="Edit"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button onClick={() => remove.mutate(r.id)} aria-label="Remove" className="text-muted-foreground hover:text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             </li>
           ))}
         </ul>

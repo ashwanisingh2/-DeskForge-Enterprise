@@ -7,9 +7,11 @@ import {demoKbArticles, isLocalDemo} from '@/lib/demo-data';
 
 export async function GET(req: NextRequest) {
   try {
-    if (isLocalDemo()) return NextResponse.json({articles: demoKbArticles, total: demoKbArticles.length});
+    if (isLocalDemo()) return NextResponse.json({articles: demoKbArticles, total: demoKbArticles.length, page: 1, totalPages: 1});
     const u = await requireUser('kb:read');
     const q = req.nextUrl.searchParams;
+    const page = Math.max(1, +(q.get('page') || 1));
+    const limit = Math.min(60, Math.max(1, +(q.get('limit') || 24)));
     const where: any = {tenantId: u.tenantId};
     const category = q.get('category');
     if (category) where.category = category;
@@ -18,13 +20,17 @@ export async function GET(req: NextRequest) {
     const search = q.get('search')?.trim();
     if (search) where.OR = [{title: {contains: search, mode: 'insensitive'}}, {content: {contains: search, mode: 'insensitive'}}];
 
-    const articles = await prisma.kBArticle.findMany({
-      where,
-      select: {id: true, title: true, category: true, status: true, views: true, helpfulYes: true, helpfulNo: true, tags: true, content: true, updatedAt: true},
-      orderBy: {updatedAt: 'desc'},
-      take: 100,
-    });
-    return NextResponse.json({articles, total: articles.length});
+    const [articles, total] = await prisma.$transaction([
+      prisma.kBArticle.findMany({
+        where,
+        select: {id: true, title: true, category: true, status: true, views: true, helpfulYes: true, helpfulNo: true, tags: true, content: true, updatedAt: true},
+        orderBy: {updatedAt: 'desc'},
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.kBArticle.count({where}),
+    ]);
+    return NextResponse.json({articles, total, page, totalPages: Math.max(1, Math.ceil(total / limit))});
   } catch (e: any) {
     return NextResponse.json(structuredError(e), {status: e?.message === 'FORBIDDEN' ? 403 : 401});
   }

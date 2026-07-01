@@ -11,6 +11,7 @@ import {Button} from '@/components/ui/button';
 import {Badge} from '@/components/ui/badge';
 import {Input, Select} from '@/components/ui/input';
 import {Skeleton} from '@/components/ui/skeleton';
+import {Pager} from '@/components/ui/pager';
 import {cn} from '@/lib/utils';
 
 export type KBArticle = {
@@ -35,15 +36,16 @@ export function KnowledgeBase() {
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
+  const [page, setPage] = useState(1);
   const debounced = useDebounce(search);
 
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({page: String(page), limit: '24'});
   if (debounced) params.set('search', debounced);
   if (category) params.set('category', category);
 
   const {data, isLoading} = useQuery({
-    queryKey: ['kb', debounced, category],
-    queryFn: () => apiGet<{articles: KBArticle[]}>(`/api/kb?${params.toString()}`),
+    queryKey: ['kb', debounced, category, page],
+    queryFn: () => apiGet<{articles: KBArticle[]; total: number; totalPages: number}>(`/api/kb?${params.toString()}`),
   });
 
   const articles = data?.articles ?? [];
@@ -68,9 +70,9 @@ export function KnowledgeBase() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[16rem] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search articles…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" aria-label="Search articles" />
+          <Input placeholder="Search articles…" value={search} onChange={(e) => {setSearch(e.target.value); setPage(1);}} className="pl-9" aria-label="Search articles" />
         </div>
-        <Select value={category} onChange={(e) => setCategory(e.target.value)} className="w-auto" aria-label="Category">
+        <Select value={category} onChange={(e) => {setCategory(e.target.value); setPage(1);}} className="w-auto" aria-label="Category">
           <option value="">All categories</option>
           {categories.map((c) => (
             <option key={c} value={c}>
@@ -121,6 +123,8 @@ export function KnowledgeBase() {
           ))}
         </div>
       )}
+
+      <Pager page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} onPage={setPage} />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {Button} from '@/components/ui/button';
 import {Badge} from '@/components/ui/badge';
 import {Select} from '@/components/ui/input';
 import {TableSkeleton} from '@/components/ui/skeleton';
+import {Pager} from '@/components/ui/pager';
 import {PROBLEM_STATUSES, humanize, problemStatusTone} from './problem-options';
 
 export type Problem = {
@@ -25,8 +26,11 @@ export function ProblemList() {
   const {data: session} = useSession();
   const canManage = ['ADMIN', 'AGENT'].includes((session?.user as {role?: string} | undefined)?.role ?? '');
   const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
 
-  const {data, isLoading} = useQuery({queryKey: ['problems'], queryFn: () => apiGet<{problems: Problem[]}>('/api/problems')});
+  const params = new URLSearchParams({page: String(page), limit: '25'});
+  if (status) params.set('status', status);
+  const {data, isLoading} = useQuery({queryKey: ['problems', status, page], queryFn: () => apiGet<{problems: Problem[]; total: number; totalPages: number}>(`/api/problems?${params.toString()}`)});
   const problems = (data?.problems ?? []).filter((p) => !status || p.status === status);
 
   return (
@@ -45,7 +49,7 @@ export function ProblemList() {
         )}
       </div>
 
-      <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-auto" aria-label="Status filter">
+      <Select value={status} onChange={(e) => {setStatus(e.target.value); setPage(1);}} className="w-auto" aria-label="Status filter">
         <option value="">All statuses</option>
         {PROBLEM_STATUSES.map((s) => (
           <option key={s} value={s}>
@@ -95,6 +99,8 @@ export function ProblemList() {
           </table>
         )}
       </Card>
+
+      <Pager page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} onPage={setPage} />
     </div>
   );
 }

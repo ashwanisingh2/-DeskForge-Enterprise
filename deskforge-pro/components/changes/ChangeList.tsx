@@ -10,6 +10,7 @@ import {Button} from '@/components/ui/button';
 import {Badge} from '@/components/ui/badge';
 import {Select} from '@/components/ui/input';
 import {Skeleton} from '@/components/ui/skeleton';
+import {Pager} from '@/components/ui/pager';
 import {CHANGE_STATUSES, changeStatusTone, humanize, riskTone} from './change-options';
 
 export type Change = {
@@ -26,8 +27,11 @@ export function ChangeList() {
   const {data: session} = useSession();
   const canManage = ['ADMIN', 'AGENT'].includes((session?.user as {role?: string} | undefined)?.role ?? '');
   const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
 
-  const {data, isLoading} = useQuery({queryKey: ['changes'], queryFn: () => apiGet<{changes: Change[]}>('/api/changes')});
+  const params = new URLSearchParams({page: String(page), limit: '24'});
+  if (status) params.set('status', status);
+  const {data, isLoading} = useQuery({queryKey: ['changes', status, page], queryFn: () => apiGet<{changes: Change[]; total: number; totalPages: number}>(`/api/changes?${params.toString()}`)});
   const changes = (data?.changes ?? []).filter((c) => !status || c.status === status);
 
   return (
@@ -46,7 +50,7 @@ export function ChangeList() {
         )}
       </div>
 
-      <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-auto" aria-label="Status filter">
+      <Select value={status} onChange={(e) => {setStatus(e.target.value); setPage(1);}} className="w-auto" aria-label="Status filter">
         <option value="">All statuses</option>
         {CHANGE_STATUSES.map((s) => (
           <option key={s} value={s}>
@@ -95,6 +99,8 @@ export function ChangeList() {
           })}
         </div>
       )}
+
+      <Pager page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} onPage={setPage} />
     </div>
   );
 }

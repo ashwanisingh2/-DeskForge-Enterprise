@@ -36,6 +36,24 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const id = body?.id as string | undefined;
+    if (!id) return NextResponse.json({error: {code: 'ID_REQUIRED', message: 'id is required'}}, {status: 400});
+    const data = schema.parse(body);
+    if (isLocalDemo()) return NextResponse.json({id, ...data});
+    const u = await requireUser('settings:admin');
+    const existing = await prisma.cannedResponse.findFirst({where: {id, tenantId: u.tenantId}});
+    if (!existing) return NextResponse.json({error: {code: 'NOT_FOUND', message: 'Not found'}}, {status: 404});
+    const response = await prisma.cannedResponse.update({where: {id}, data});
+    return NextResponse.json(response);
+  } catch (e: any) {
+    const status = e?.message === 'UNAUTHORIZED' ? 401 : e?.message === 'FORBIDDEN' ? 403 : 400;
+    return NextResponse.json(structuredError(e), {status});
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   try {
     const id = req.nextUrl.searchParams.get('id');

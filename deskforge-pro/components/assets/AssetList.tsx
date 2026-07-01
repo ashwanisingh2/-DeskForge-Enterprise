@@ -11,6 +11,7 @@ import {Button} from '@/components/ui/button';
 import {Badge} from '@/components/ui/badge';
 import {Input, Select} from '@/components/ui/input';
 import {TableSkeleton} from '@/components/ui/skeleton';
+import {Pager} from '@/components/ui/pager';
 import {ASSET_STATUSES, ASSET_TYPES, assetStatusTone, type AssetStatus} from './asset-options';
 
 export type Asset = {
@@ -31,16 +32,17 @@ export function AssetList() {
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
   const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
   const debounced = useDebounce(search);
 
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({page: String(page), limit: '25'});
   if (debounced) params.set('search', debounced);
   if (type) params.set('type', type);
   if (status) params.set('status', status);
 
   const {data, isLoading} = useQuery({
-    queryKey: ['assets', debounced, type, status],
-    queryFn: () => apiGet<{assets: Asset[]; total: number}>(`/api/assets?${params.toString()}`),
+    queryKey: ['assets', debounced, type, status, page],
+    queryFn: () => apiGet<{assets: Asset[]; total: number; totalPages: number}>(`/api/assets?${params.toString()}`),
   });
   const assets = data?.assets ?? [];
 
@@ -63,9 +65,9 @@ export function AssetList() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[16rem] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search by tag, name or serial…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" aria-label="Search assets" />
+          <Input placeholder="Search by tag, name or serial…" value={search} onChange={(e) => {setSearch(e.target.value); setPage(1);}} className="pl-9" aria-label="Search assets" />
         </div>
-        <Select value={type} onChange={(e) => setType(e.target.value)} className="w-auto" aria-label="Type">
+        <Select value={type} onChange={(e) => {setType(e.target.value); setPage(1);}} className="w-auto" aria-label="Type">
           <option value="">All types</option>
           {ASSET_TYPES.map((t) => (
             <option key={t} value={t}>
@@ -73,7 +75,7 @@ export function AssetList() {
             </option>
           ))}
         </Select>
-        <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-auto" aria-label="Status">
+        <Select value={status} onChange={(e) => {setStatus(e.target.value); setPage(1);}} className="w-auto" aria-label="Status">
           <option value="">All statuses</option>
           {ASSET_STATUSES.map((s) => (
             <option key={s} value={s}>
@@ -124,6 +126,8 @@ export function AssetList() {
           </table>
         )}
       </Card>
+
+      <Pager page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} onPage={setPage} />
     </div>
   );
 }

@@ -82,3 +82,10 @@ export const demoAgents=[
   {id:'demo-agent-1',name:'Priya Mehta',role:'AGENT'},
   {id:'demo-agent-2',name:'Ravi Kumar',role:'AGENT'},
 ];
+
+
+export const demoNotifications=[
+  {id:'n1',type:'ticket_assigned',title:'Ticket assigned to you',message:'TKT-0001 — Laptop will not connect to office WiFi',ticketId:'TKT-0001',isRead:false,createdAt:new Date(Date.now()-15*6e4).toISOString()},
+  {id:'n2',type:'sla_warning',title:'SLA at risk',message:'TKT-0002 is approaching its resolution deadline',ticketId:'TKT-0002',isRead:false,createdAt:new Date(Date.now()-2*36e5).toISOString()},
+  {id:'n3',type:'comment',title:'New reply',message:'Rahul Gupta replied on TKT-0001',ticketId:'TKT-0001',isRead:true,createdAt:new Date(Date.now()-864e5).toISOString()},
+];

@@ -5,7 +5,6 @@ import {usePathname} from 'next/navigation';
 import {signOut, useSession} from 'next-auth/react';
 import {AnimatePresence, motion} from 'framer-motion';
 import {
-  Bell,
   Boxes,
   ChevronLeft,
   ChevronRight,
@@ -29,6 +28,7 @@ import {cn} from '@/lib/utils';
 import {Button} from '@/components/ui/button';
 import {ThemeToggle} from '@/components/ui/theme-toggle';
 import {CommandPalette} from '@/components/CommandPalette';
+import {NotificationBell} from '@/components/NotificationBell';
 
 type NavItem = {label: string; href: string; icon: typeof Ticket; adminOnly?: boolean; badge?: string};
 
@@ -250,14 +250,8 @@ export function Shell({children}: {children: React.ReactNode}) {
 
           <ThemeToggle />
 
-          {/* Notification bell */}
-          <button
-            className="relative grid h-9 w-9 place-items-center rounded-lg border border-border bg-card/60 text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Notifications"
-          >
-            <Bell className="h-4 w-4" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500 ring-2 ring-background" aria-hidden />
-          </button>
+          {/* Notifications */}
+          <NotificationBell />
 
           {/* Create button */}
           <Link href="/tickets/create">

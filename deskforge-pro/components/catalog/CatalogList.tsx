@@ -3,7 +3,7 @@ import {useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {useSession} from 'next-auth/react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import {ClipboardList, Plus, Send} from 'lucide-react';
+import {ClipboardList, Pencil, Plus, Send, Trash2} from 'lucide-react';
 import {ApiError, apiGet, apiSend} from '@/lib/api-client';
 import {Card} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
@@ -22,6 +22,8 @@ type CatalogItem = {
   fulfillmentTeam?: string | null;
 };
 
+const emptyForm = {name: '', category: '', description: '', deliveryHours: '', cost: '', fulfillmentTeam: ''};
+
 export function CatalogList() {
   const router = useRouter();
   const {toast} = useToast();
@@ -29,10 +31,30 @@ export function CatalogList() {
   const canManage = ['ADMIN', 'AGENT'].includes((useSession().data?.user as {role?: string} | undefined)?.role ?? '');
 
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({name: '', category: '', description: '', deliveryHours: '', cost: '', fulfillmentTeam: ''});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyForm);
 
   const {data, isLoading} = useQuery({queryKey: ['catalog'], queryFn: () => apiGet<{items: CatalogItem[]}>('/api/catalog')});
   const items = data?.items ?? [];
+  const invalidate = () => queryClient.invalidateQueries({queryKey: ['catalog']});
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setShowForm(true);
+  };
+  const openEdit = (item: CatalogItem) => {
+    setEditingId(item.id);
+    setForm({
+      name: item.name,
+      category: item.category,
+      description: item.description,
+      deliveryHours: item.deliveryHours?.toString() ?? '',
+      cost: item.cost?.toString() ?? '',
+      fulfillmentTeam: item.fulfillmentTeam ?? '',
+    });
+    setShowForm(true);
+  };
 
   const request = useMutation({
     mutationFn: (item: CatalogItem) =>
@@ -50,24 +72,36 @@ export function CatalogList() {
     onError: (err) => toast({tone: 'error', title: 'Request failed', description: err instanceof ApiError ? err.message : 'Error'}),
   });
 
-  const create = useMutation({
-    mutationFn: () =>
-      apiSend('/api/catalog', 'POST', {
+  const save = useMutation({
+    mutationFn: () => {
+      const payload = {
         name: form.name,
         category: form.category,
         description: form.description,
         formSchema: {},
         fulfillmentTeam: form.fulfillmentTeam || undefined,
-        deliveryHours: form.deliveryHours ? Number(form.deliveryHours) : undefined,
+        deliveryHours: form.deliveryHours ? Number(form.deliveryHours) : null,
         cost: form.cost ? Number(form.cost) : null,
-      }),
+      };
+      return editingId ? apiSend(`/api/catalog/${editingId}`, 'PATCH', payload) : apiSend('/api/catalog', 'POST', payload);
+    },
     onSuccess: () => {
       setShowForm(false);
-      setForm({name: '', category: '', description: '', deliveryHours: '', cost: '', fulfillmentTeam: ''});
-      queryClient.invalidateQueries({queryKey: ['catalog']});
-      toast({tone: 'success', title: 'Service published'});
+      setEditingId(null);
+      setForm(emptyForm);
+      invalidate();
+      toast({tone: 'success', title: editingId ? 'Service updated' : 'Service published'});
     },
-    onError: (err) => toast({tone: 'error', title: 'Create failed', description: err instanceof ApiError ? err.message : 'Error'}),
+    onError: (err) => toast({tone: 'error', title: 'Save failed', description: err instanceof ApiError ? err.message : 'Error'}),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => apiSend(`/api/catalog/${id}`, 'DELETE'),
+    onSuccess: () => {
+      invalidate();
+      toast({tone: 'success', title: 'Service removed'});
+    },
+    onError: (err) => toast({tone: 'error', title: 'Remove failed', description: err instanceof ApiError ? err.message : 'Error'}),
   });
 
   return (
@@ -78,7 +112,7 @@ export function CatalogList() {
           <p className="mt-1 text-blue-100">Request approved IT services through guided fulfillment workflows.</p>
         </div>
         {canManage && (
-          <Button variant="secondary" onClick={() => setShowForm((v) => !v)}>
+          <Button variant="secondary" onClick={openCreate}>
             <Plus className="h-4 w-4" /> New service
           </Button>
         )}
@@ -86,12 +120,12 @@ export function CatalogList() {
 
       {showForm && canManage && (
         <Card className="p-5">
-          <h2 className="mb-4 text-lg font-bold">Publish a service</h2>
+          <h2 className="mb-4 text-lg font-bold">{editingId ? 'Edit service' : 'Publish a service'}</h2>
           <form
             className="grid gap-4 sm:grid-cols-2"
             onSubmit={(e) => {
               e.preventDefault();
-              if (form.name.trim().length >= 3 && form.category.trim().length >= 2 && form.description.trim().length >= 10) create.mutate();
+              if (form.name.trim().length >= 3 && form.category.trim().length >= 2 && form.description.trim().length >= 10) save.mutate();
             }}
           >
             <label className="text-sm">
@@ -122,8 +156,8 @@ export function CatalogList() {
               <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                 Cancel
               </Button>
-              <Button type="submit" loading={create.isPending}>
-                Publish
+              <Button type="submit" loading={save.isPending}>
+                {editingId ? 'Save changes' : 'Publish'}
               </Button>
             </div>
           </form>
@@ -148,8 +182,24 @@ export function CatalogList() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {items.map((item) => (
-            <Card key={item.id} className="flex flex-col p-5">
-              <Badge tone="info">{item.category}</Badge>
+            <Card key={item.id} className="card-hover flex flex-col p-5">
+              <div className="flex items-start justify-between gap-2">
+                <Badge tone="info">{item.category}</Badge>
+                {canManage && (
+                  <div className="flex gap-1">
+                    <button onClick={() => openEdit(item)} aria-label={`Edit ${item.name}`} className="text-muted-foreground hover:text-foreground">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => window.confirm(`Remove "${item.name}" from the catalog?`) && remove.mutate(item.id)}
+                      aria-label={`Remove ${item.name}`}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
               <h2 className="my-2 text-lg font-bold">{item.name}</h2>
               <p className="flex-1 text-sm text-muted-foreground" dangerouslySetInnerHTML={{__html: item.description}} />
               <div className="mt-4 flex justify-between text-sm text-muted-foreground">

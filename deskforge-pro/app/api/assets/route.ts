@@ -18,16 +18,21 @@ export const assetSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    if (isLocalDemo()) return NextResponse.json({assets: demoAssetRecords, total: demoAssetRecords.length});
+    if (isLocalDemo()) return NextResponse.json({assets: demoAssetRecords, total: demoAssetRecords.length, page: 1, totalPages: 1});
     const u = await requireUser('asset:read');
     const q = req.nextUrl.searchParams;
+    const page = Math.max(1, +(q.get('page') || 1));
+    const limit = Math.min(100, Math.max(1, +(q.get('limit') || 25)));
     const where: any = {tenantId: u.tenantId};
     const search = q.get('search')?.trim();
     if (search) where.OR = [{assetTag: {contains: search, mode: 'insensitive'}}, {name: {contains: search, mode: 'insensitive'}}, {serialNumber: {contains: search, mode: 'insensitive'}}];
     if (q.get('type')) where.type = q.get('type');
     if (q.get('status')) where.status = q.get('status');
-    const assets = await prisma.asset.findMany({where, include: {owner: {select: {id: true, name: true}}}, orderBy: {updatedAt: 'desc'}, take: 200});
-    return NextResponse.json({assets, total: assets.length});
+    const [assets, total] = await prisma.$transaction([
+      prisma.asset.findMany({where, include: {owner: {select: {id: true, name: true}}}, orderBy: {updatedAt: 'desc'}, skip: (page - 1) * limit, take: limit}),
+      prisma.asset.count({where}),
+    ]);
+    return NextResponse.json({assets, total, page, totalPages: Math.max(1, Math.ceil(total / limit))});
   } catch (e: any) {
     return NextResponse.json(structuredError(e), {status: e?.message === 'FORBIDDEN' ? 403 : 401});
   }
