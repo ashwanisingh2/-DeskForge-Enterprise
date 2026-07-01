@@ -3,18 +3,19 @@ import {useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {useSession} from 'next-auth/react';
 import {useQuery} from '@tanstack/react-query';
-import {ArrowLeft} from 'lucide-react';
+import {ArrowLeft, Calendar, Clock, Tag, User, UserCog} from 'lucide-react';
 import {apiGet} from '@/lib/api-client';
 import {Avatar, Tabs, type TabItem} from '@/components/ui/tabs';
 import {Button} from '@/components/ui/button';
 import {Card} from '@/components/ui/card';
-import {PriorityBadge, StatusBadge} from '@/components/ui/badge';
+import {PriorityBadge, SlaBadge, StatusBadge} from '@/components/ui/badge';
 import {Conversation} from '@/components/tickets/detail/Conversation';
 import {ActivityTimeline} from '@/components/tickets/detail/ActivityTimeline';
 import {Attachments} from '@/components/tickets/detail/Attachments';
 import {TimeTracking} from '@/components/tickets/detail/TimeTracking';
 import {RelatedTickets} from '@/components/tickets/detail/RelatedTickets';
 import {PropertiesPanel} from '@/components/tickets/detail/PropertiesPanel';
+import {TicketActions} from '@/components/tickets/detail/TicketActions';
 
 export function TicketDetail({initial}: {initial: any}) {
   const router = useRouter();
@@ -47,17 +48,43 @@ export function TicketDetail({initial}: {initial: any}) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" /> Back
-        </Button>
-        <span className="font-mono font-bold text-primary">{t.id}</span>
-        <h1 className="text-2xl font-bold">{t.title}</h1>
-        <div className="flex gap-2">
-          <StatusBadge value={t.status} />
-          <PriorityBadge value={t.priority} />
+      {/* Header card with meta + actions */}
+      <Card className="glass p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <Button variant="ghost" size="sm" className="mb-2 -ml-2" onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4" /> Back
+            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-mono text-sm font-bold text-primary">{t.id}</span>
+              <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
+              <StatusBadge value={t.status} />
+              <PriorityBadge value={t.priority} />
+            </div>
+          </div>
+          <TicketActions ticket={t} canManage={canManage} />
         </div>
-      </div>
+
+        {/* Meta strip */}
+        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-border pt-4 text-sm">
+          <Meta icon={User} label="Requester" value={t.requester?.name ?? '—'} />
+          <Meta icon={UserCog} label="Technician" value={t.assignee?.name ?? 'Unassigned'} />
+          <Meta icon={Tag} label="Category" value={t.category ?? '—'} />
+          <Meta icon={Calendar} label="Created" value={new Date(t.createdAt).toLocaleDateString()} />
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" />
+            <span className="font-medium text-foreground">SLA:</span>
+            {t.slaStatus ? <SlaBadge value={t.slaStatus} /> : '—'}
+          </div>
+          {Array.isArray(t.tags) && t.tags.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              {t.tags.map((tag: string) => (
+                <span key={tag} className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">#{tag}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="space-y-5 lg:col-span-2">
@@ -91,6 +118,16 @@ export function TicketDetail({initial}: {initial: any}) {
           </Card>
         </aside>
       </div>
+    </div>
+  );
+}
+
+function Meta({icon: Icon, label, value}: {icon: typeof User; label: string; value: string}) {
+  return (
+    <div className="flex items-center gap-1.5 text-muted-foreground">
+      <Icon className="h-3.5 w-3.5" />
+      <span className="font-medium text-foreground">{label}:</span>
+      <span className="truncate">{value}</span>
     </div>
   );
 }
